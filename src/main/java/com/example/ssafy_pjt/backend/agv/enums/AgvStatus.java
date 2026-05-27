@@ -1,4 +1,4 @@
-package com.example.ssafy_pjt.agv.enums;
+package com.example.ssafy_pjt.backend.agv.enums;
 
 public enum AgvStatus {
     IDLE,

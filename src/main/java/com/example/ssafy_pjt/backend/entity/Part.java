@@ -1,4 +1,4 @@
-package com.example.ssafy_pjt.part.entity;
+package com.example.ssafy_pjt.backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;

@@ -1,8 +1,8 @@
-package com.example.ssafy_pjt.zone.entity;
+package com.example.ssafy_pjt.backend.zone.entity;
 
-import com.example.ssafy_pjt.agv.entity.Agv;
-import com.example.ssafy_pjt.zone.enums.ZoneStatus;
-import com.example.ssafy_pjt.zone.enums.ZoneType;
+import com.example.ssafy_pjt.backend.agv.entity.Agv;
+import com.example.ssafy_pjt.backend.zone.enums.ZoneStatus;
+import com.example.ssafy_pjt.backend.zone.enums.ZoneType;
 import jakarta.persistence.*;
 import lombok.*;
 
