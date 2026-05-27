@@ -1,6 +1,6 @@
-package com.example.ssafy_pjt.marker.entity;
+package com.example.ssafy_pjt.backend.entity;
 
-import com.example.ssafy_pjt.zone.entity.Zone;
+import com.example.ssafy_pjt.backend.zone.entity.Zone;
 import jakarta.persistence.*;
 import lombok.*;
 
