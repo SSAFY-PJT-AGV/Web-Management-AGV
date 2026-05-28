@@ -1,4 +1,4 @@
-package com.example.ssafy_pjt.backend.productiontask.enums;
+package com.example.ssafy_pjt.backend.task.enums;
 
 public enum ProductType {
     PRODUCT_A,

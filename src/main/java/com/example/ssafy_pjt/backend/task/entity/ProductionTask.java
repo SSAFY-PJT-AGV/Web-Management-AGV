@@ -1,8 +1,9 @@
-package com.example.ssafy_pjt.backend.productiontask.entity;
+package com.example.ssafy_pjt.backend.task.entity;
 
-import com.example.ssafy_pjt.backend.productiontask.enums.ProductType;
-import com.example.ssafy_pjt.backend.productiontask.enums.TaskPriority;
-import com.example.ssafy_pjt.backend.productiontask.enums.TaskStatus;
+import com.example.ssafy_pjt.backend.task.enums.ProductType;
+import com.example.ssafy_pjt.backend.task.enums.TaskPriority;
+import com.example.ssafy_pjt.backend.task.enums.TaskStatus;
+import com.example.ssafy_pjt.backend.task.enums.TaskType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,6 +20,10 @@ public class ProductionTask {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "task_id")
     private Long taskId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "task_type", nullable = false, length = 50)
+    private TaskType taskType;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "product_type", nullable = false, length = 50)

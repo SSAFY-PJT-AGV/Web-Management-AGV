@@ -20,4 +20,8 @@ public class Material {
 
     @Column(name = "material_name", nullable = false, length = 100)
     private String materialName;
+
+    public void changeName(String materialName) {
+        this.materialName = materialName;
+    }
 }
