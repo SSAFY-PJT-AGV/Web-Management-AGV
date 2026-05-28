@@ -1,7 +1,7 @@
 package com.example.ssafy_pjt.backend.agv.entity;
 
 import com.example.ssafy_pjt.backend.agv.enums.AgvStatus;
-import com.example.ssafy_pjt.backend.entity.ArucoMarker;
+import com.example.ssafy_pjt.backend.marker.entity.ArucoMarker;
 import com.example.ssafy_pjt.backend.zone.entity.Zone;
 import jakarta.persistence.*;
 import lombok.*;
