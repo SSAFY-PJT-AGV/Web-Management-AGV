@@ -1,105 +1,88 @@
 ```
-ssafy-pjt/
-├── src/
-│   └── main/
-│       ├── java/
-│       │   └── com/example/ssafy_pjt/
-│       │       ├── common/
-│       │       │   ├── config/
-│       │       │   ├── exception/
-│       │       │   ├── response/
-│       │       │   └── util/
-│       │       │
-│       │       ├── task/
-│       │       │   ├── controller/
-│       │       │   ├── service/
-│       │       │   ├── repository/
-│       │       │   ├── dto/
-│       │       │   ├── entity/
-│       │       │   └── enums/
-│       │       │
-│       │       ├── material/
-│       │       │   ├── controller/
-│       │       │   ├── service/
-│       │       │   ├── repository/
-│       │       │   ├── dto/
-│       │       │   └── entity/
-│       │       │
-│       │       ├── inventory/
-│       │       │   ├── controller/
-│       │       │   ├── service/
-│       │       │   ├── repository/
-│       │       │   ├── dto/
-│       │       │   ├── entity/
-│       │       │   └── enums/
-│       │       │
-│       │       ├── mission/
-│       │       │   ├── controller/
-│       │       │   ├── service/
-│       │       │   ├── repository/
-│       │       │   ├── dto/
-│       │       │   ├── entity/
-│       │       │   └── enums/
-│       │       │
-│       │       ├── agv/
-│       │       │   ├── controller/
-│       │       │   ├── service/
-│       │       │   ├── repository/
-│       │       │   ├── dto/
-│       │       │   ├── entity/
-│       │       │   └── enums/
-│       │       │
-│       │       ├── zone/
-│       │       │   ├── controller/
-│       │       │   ├── service/
-│       │       │   ├── repository/
-│       │       │   ├── dto/
-│       │       │   ├── entity/
-│       │       │   └── enums/
-│       │       │
-│       │       ├── recommendation/
-│       │       │   ├── controller/
-│       │       │   ├── service/
-│       │       │   ├── repository/
-│       │       │   ├── dto/
-│       │       │   └── entity/
-│       │       │
-│       │       ├── event/
-│       │       │   ├── controller/
-│       │       │   ├── service/
-│       │       │   ├── repository/
-│       │       │   ├── dto/
-│       │       │   ├── entity/
-│       │       │   └── enums/
-│       │       │
-│       │       ├── mqtt/
-│       │       │   ├── config/
-│       │       │   ├── publisher/
-│       │       │   ├── subscriber/
-│       │       │   └── dto/
-│       │       │
-│       │       ├── websocket/
-│       │       │   ├── config/
-│       │       │   ├── publisher/
-│       │       │   └── dto/
-│       │       │
-│       │       ├── auth/
-│       │       │   ├── controller/
-│       │       │   ├── service/
-│       │       │   ├── dto/
-│       │       │   └── entity/
-│       │       │
-│       │       └── SsafyPjtApplication.java
-│       │
-│       └── resources/
-│           ├── application.properties
-│           └── static/
-│
-├── docker-compose.yml
-├── .env
-├── .env.example
-├── .gitignore
-├── build.gradle
-└── README.md
-
+src/main/java/com/example/ssafy_pjt/backend
+└─ feature
+   ├─ agv
+   │  ├─ entity
+   │  │  └─ Agv.java
+   │  ├─ repository
+   │  │  └─ AgvRepository.java
+   │  └─ enums
+   │     ├─ AgvStatus.java
+   │     └─ CargoType.java
+   │
+   ├─ mission
+   │  ├─ entity
+   │  │  └─ Mission.java
+   │  ├─ repository
+   │  │  └─ MissionRepository.java
+   │  └─ enums
+   │     ├─ MissionType.java
+   │     └─ MissionStatus.java
+   │
+   ├─ task
+   │  ├─ entity
+   │  │  └─ ProductionTask.java
+   │  ├─ repository
+   │  │  └─ ProductionTaskRepository.java
+   │  └─ enums
+   │     ├─ ProductType.java
+   │     ├─ TaskType.java
+   │     ├─ TaskPriority.java
+   │     └─ TaskStatus.java
+   │
+   ├─ material
+   │  ├─ entity
+   │  │  ├─ Material.java
+   │  │  └─ ProductMaterial.java
+   │  └─ repository
+   │     ├─ MaterialRepository.java
+   │     └─ ProductMaterialRepository.java
+   │
+   ├─ marker
+   │  ├─ entity
+   │  │  └─ ArucoMarker.java
+   │  ├─ repository
+   │  │  └─ ArucoMarkerRepository.java
+   │  └─ enums
+   │     └─ MarkerType.java
+   │
+   ├─ zone
+   │  ├─ entity
+   │  │  └─ Zone.java
+   │  ├─ repository
+   │  │  └─ ZoneRepository.java
+   │  └─ enums
+   │     ├─ ZoneType.java
+   │     └─ ZoneStatus.java
+   │
+   ├─ reservation
+   │  ├─ entity
+   │  │  └─ Reservation.java
+   │  ├─ repository
+   │  │  └─ ReservationRepository.java
+   │  └─ enums
+   │     └─ ReservationStatus.java
+   │
+   ├─ inventory
+   │  ├─ entity
+   │  │  └─ Inventory.java
+   │  ├─ repository
+   │  │  └─ InventoryRepository.java
+   │  └─ enums
+   │     └─ InventoryStatus.java
+   │
+   ├─ recommendation
+   │  ├─ entity
+   │  │  └─ Recommendation.java
+   │  └─ repository
+   │     └─ RecommendationRepository.java
+   │
+   └─ event
+      ├─ entity
+      │  └─ EventLog.java
+      ├─ repository
+      │  └─ EventLogRepository.java
+      └─ enums
+         ├─ EventType.java
+         └─ EventLevel.java
 ```
