@@ -1,5 +1,6 @@
-package com.example.ssafy_pjt.backend.websocket;
+package com.example.ssafy_pjt.backend.websocket.config;
 
+import com.example.ssafy_pjt.backend.websocket.handler.AgvHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.*;
