@@ -5,6 +5,9 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
+*.jpg
+received_*.jpg
+
 ### STS ###
 .apt_generated
 .classpath
