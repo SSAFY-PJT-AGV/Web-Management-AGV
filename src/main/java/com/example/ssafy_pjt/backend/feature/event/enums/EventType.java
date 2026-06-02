@@ -1,14 +1,13 @@
 package com.example.ssafy_pjt.backend.feature.event.enums;
 
 public enum EventType {
-    TASK_CREATED,
+    STATUS_CHANGED,
     MISSION_CREATED,
-    MISSION_ASSIGNED,
+    MISSION_STARTED,
     MISSION_COMPLETED,
     MISSION_FAILED,
-    AGV_STATUS_CHANGED,
-    INVENTORY_LOW,
-    AI_RECOMMENDED,
+    LOW_STOCK,
+    COLLISION_WARNING,
     ZONE_RESERVED,
-    ZONE_RELEASED
+    ERROR_OCCURRED
 }

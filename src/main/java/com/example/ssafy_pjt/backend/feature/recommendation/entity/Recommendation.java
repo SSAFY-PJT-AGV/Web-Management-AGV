@@ -1,31 +1,31 @@
 package com.example.ssafy_pjt.backend.feature.recommendation.entity;
 
 import com.example.ssafy_pjt.backend.feature.material.entity.Material;
-import com.example.ssafy_pjt.backend.feature.task.entity.ProductionTask;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "recommendation")
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
-@Builder
+@Setter
+@NoArgsConstructor
 public class Recommendation {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "recommendation_id")
     private Long recommendationId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "task_id", nullable = false)
-    private ProductionTask productionTask;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "part_id", nullable = false)
+    @JoinColumn(name = "material_id", nullable = false)
     private Material material;
+
+    @Column(name = "priority_rank", nullable = false)
+    private Integer priorityRank;
 
     @Column(name = "priority_score", nullable = false)
     private Double priorityScore;

@@ -1,23 +1,25 @@
 package com.example.ssafy_pjt.backend.feature.mission.entity;
 
 import com.example.ssafy_pjt.backend.feature.agv.entity.Agv;
+import com.example.ssafy_pjt.backend.feature.material.entity.Material;
 import com.example.ssafy_pjt.backend.feature.mission.enums.MissionStatus;
 import com.example.ssafy_pjt.backend.feature.mission.enums.MissionType;
-import com.example.ssafy_pjt.backend.feature.material.entity.Material;
 import com.example.ssafy_pjt.backend.feature.task.entity.ProductionTask;
 import com.example.ssafy_pjt.backend.feature.zone.entity.Zone;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "mission")
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
-@Builder
+@Setter
+@NoArgsConstructor
 public class Mission {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "mission_id")
@@ -25,23 +27,26 @@ public class Mission {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "task_id", nullable = false)
-    private ProductionTask productionTask;
+    private ProductionTask task;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "agv_id")
+    @JoinColumn(name = "agv_id", nullable = false)
     private Agv agv;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "mission_type", nullable = false, length = 50)
+    private MissionType missionType;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "material_id")
     private Material material;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "mission_type", nullable = false, length = 30)
-    private MissionType missionType;
-
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private MissionStatus status;
+
+    @Column(name = "sequence_order", nullable = false)
+    private Integer sequenceOrder;
 
     private Integer quantity;
 
@@ -64,24 +69,4 @@ public class Mission {
 
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
-
-    public void assignAgv(Agv agv) {
-        this.agv = agv;
-        this.status = MissionStatus.ASSIGNED;
-    }
-
-    public void start() {
-        this.status = MissionStatus.IN_PROGRESS;
-        this.startedAt = LocalDateTime.now();
-    }
-
-    public void complete() {
-        this.status = MissionStatus.COMPLETED;
-        this.completedAt = LocalDateTime.now();
-    }
-
-    public void fail(String reason) {
-        this.status = MissionStatus.FAILED;
-        this.failureReason = reason;
-    }
 }

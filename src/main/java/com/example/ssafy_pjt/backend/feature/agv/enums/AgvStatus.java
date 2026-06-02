@@ -2,10 +2,12 @@ package com.example.ssafy_pjt.backend.feature.agv.enums;
 
 public enum AgvStatus {
     IDLE,
+    ASSIGNED,
     MOVING,
-    WORKING,
     WAITING,
+    ARRIVED,
+    LOADING,
+    UNLOADING,
     ERROR,
-    OFFLINE,
-    CHARGING
+    OFFLINE
 }

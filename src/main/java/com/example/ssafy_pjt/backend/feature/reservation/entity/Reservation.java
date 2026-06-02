@@ -5,17 +5,19 @@ import com.example.ssafy_pjt.backend.feature.mission.entity.Mission;
 import com.example.ssafy_pjt.backend.feature.reservation.enums.ReservationStatus;
 import com.example.ssafy_pjt.backend.feature.zone.entity.Zone;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "reservation")
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
-@Builder
+@Setter
+@NoArgsConstructor
 public class Reservation {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "reservation_id")
@@ -30,14 +32,14 @@ public class Reservation {
     private Agv agv;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "mission_id", nullable = false)
+    @JoinColumn(name = "mission_id")
     private Mission mission;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private ReservationStatus status;
 
-    @Column(name = "reserved_at")
+    @Column(name = "reserved_at", nullable = false)
     private LocalDateTime reservedAt;
 
     @Column(name = "occupied_at")

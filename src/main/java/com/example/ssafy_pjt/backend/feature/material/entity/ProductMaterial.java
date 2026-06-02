@@ -1,28 +1,35 @@
 package com.example.ssafy_pjt.backend.feature.material.entity;
 
-import com.example.ssafy_pjt.backend.feature.task.entity.ProductionTask;
+import com.example.ssafy_pjt.backend.feature.task.enums.ProductType;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
-@Table(name = "task_material")
+@Table(
+        name = "product_material",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"product_type", "material_id"})
+        }
+)
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
-@Builder
+@Setter
+@NoArgsConstructor
 public class ProductMaterial {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "task_id", nullable = false)
-    private ProductionTask productionTask;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "product_type", nullable = false, length = 50)
+    private ProductType productType;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "material_id", nullable = false)
     private Material material;
 
-    @Column(name = "required_quantity", nullable = false)
-    private Integer requiredQuantity;
+    @Column(name = "quantity_per_unit", nullable = false)
+    private Integer quantityPerUnit;
 }

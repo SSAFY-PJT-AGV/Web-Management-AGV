@@ -3,17 +3,19 @@ package com.example.ssafy_pjt.backend.feature.event.entity;
 import com.example.ssafy_pjt.backend.feature.event.enums.EventLevel;
 import com.example.ssafy_pjt.backend.feature.event.enums.EventType;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "event_log")
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
-@Builder
+@Setter
+@NoArgsConstructor
 public class EventLog {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "event_id")

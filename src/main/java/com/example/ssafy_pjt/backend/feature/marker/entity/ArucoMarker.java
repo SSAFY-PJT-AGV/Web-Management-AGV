@@ -1,20 +1,27 @@
 package com.example.ssafy_pjt.backend.feature.marker.entity;
 
+import com.example.ssafy_pjt.backend.feature.marker.enums.MarkerType;
 import com.example.ssafy_pjt.backend.feature.material.entity.Material;
 import com.example.ssafy_pjt.backend.feature.zone.entity.Zone;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "aruco_marker")
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
-@Builder
+@Setter
+@NoArgsConstructor
 public class ArucoMarker {
+
     @Id
     @Column(name = "marker_id")
     private Integer markerId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "marker_type", nullable = false, length = 20)
+    private MarkerType markerType;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "material_id")
@@ -24,10 +31,10 @@ public class ArucoMarker {
     @JoinColumn(name = "zone_id")
     private Zone zone;
 
-    @Column(name = "x_position", nullable = false)
+    @Column(name = "x_position")
     private Double xPosition;
 
-    @Column(name = "y_position", nullable = false)
+    @Column(name = "y_position")
     private Double yPosition;
 
     @Column(length = 100)
@@ -35,21 +42,4 @@ public class ArucoMarker {
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
-
-    public void updatePosition(Double xPosition, Double yPosition) {
-        this.xPosition = xPosition;
-        this.yPosition = yPosition;
-    }
-
-    public void updateDescription(String description) {
-        this.description = description;
-    }
-
-    public void activate() {
-        this.isActive = true;
-    }
-
-    public void deactivate() {
-        this.isActive = false;
-    }
 }

@@ -4,17 +4,24 @@ import com.example.ssafy_pjt.backend.feature.inventory.enums.InventoryStatus;
 import com.example.ssafy_pjt.backend.feature.material.entity.Material;
 import com.example.ssafy_pjt.backend.feature.zone.entity.Zone;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "inventory")
+@Table(
+        name = "inventory",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"material_id", "zone_id"})
+        }
+)
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
-@Builder
+@Setter
+@NoArgsConstructor
 public class Inventory {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "inventory_id")
@@ -29,13 +36,13 @@ public class Inventory {
     private Zone zone;
 
     @Column(name = "current_quantity", nullable = false)
-    private Integer currentQuantity;
+    private Integer currentQuantity = 0;
 
-    @Column(name = "reserved_quantity")
-    private Integer reservedQuantity;
+    @Column(name = "reserved_quantity", nullable = false)
+    private Integer reservedQuantity = 0;
 
     @Column(name = "min_threshold", nullable = false)
-    private Integer minThreshold;
+    private Integer minThreshold = 0;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -43,17 +50,4 @@ public class Inventory {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
-
-    public int calculateAvailableQuantity() {
-        return currentQuantity - reservedQuantity;
-    }
-
-    public boolean isShortage() {
-        return calculateAvailableQuantity() < minThreshold;
-    }
-
-    public void decreaseStock(Integer quantity) {
-        this.currentQuantity -= quantity;
-        this.updatedAt = LocalDateTime.now();
-    }
 }

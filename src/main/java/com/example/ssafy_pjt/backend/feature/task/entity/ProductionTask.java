@@ -5,25 +5,23 @@ import com.example.ssafy_pjt.backend.feature.task.enums.TaskPriority;
 import com.example.ssafy_pjt.backend.feature.task.enums.TaskStatus;
 import com.example.ssafy_pjt.backend.feature.task.enums.TaskType;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "production_task")
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
-@Builder
+@Setter
+@NoArgsConstructor
 public class ProductionTask {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "task_id")
     private Long taskId;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "task_type", nullable = false, length = 50)
-    private TaskType taskType;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "product_type", nullable = false, length = 50)
@@ -31,6 +29,10 @@ public class ProductionTask {
 
     @Column(nullable = false)
     private Integer quantity;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "task_type", nullable = false, length = 20)
+    private TaskType taskType;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -49,20 +51,6 @@ public class ProductionTask {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
-    @Column(name = "updated_at")
-    private  LocalDateTime updatedAt;
-
-
-    public void changeStatus(TaskStatus status){
-        this.status = status;
-        this.updatedAt = LocalDateTime.now();
-
-        if(status == TaskStatus.IN_PROGRESS){
-            this.startedAt = LocalDateTime.now();
-        }
-
-        if(status == TaskStatus.COMPLETED){
-            this.completedAt = LocalDateTime.now();
-        }
-    }
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 }

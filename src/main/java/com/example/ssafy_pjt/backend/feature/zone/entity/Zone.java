@@ -1,24 +1,25 @@
 package com.example.ssafy_pjt.backend.feature.zone.entity;
 
-import com.example.ssafy_pjt.backend.feature.agv.entity.Agv;
 import com.example.ssafy_pjt.backend.feature.zone.enums.ZoneStatus;
 import com.example.ssafy_pjt.backend.feature.zone.enums.ZoneType;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "zone")
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
-@Builder
+@Setter
+@NoArgsConstructor
 public class Zone {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "zone_id")
     private Long zoneId;
 
-    @Column(name = "zone_name", nullable = false, length = 50)
+    @Column(name = "zone_name", nullable = false, unique = true, length = 50)
     private String zoneName;
 
     @Enumerated(EnumType.STRING)
@@ -28,8 +29,4 @@ public class Zone {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private ZoneStatus status;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "current_agv_id")
-    private Agv currentAgv;
 }
