@@ -14,7 +14,15 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "mission")
+@Table(
+        name = "mission",
+        indexes = {
+                @Index(
+                        name = "idx_mission_dispatch",
+                        columnList = "status, mission_type, sequence_order, created_at"
+                )
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -26,11 +34,11 @@ public class Mission {
     private Long missionId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "task_id", nullable = false)
+    @JoinColumn(name = "task_id")
     private ProductionTask task;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "agv_id", nullable = false)
+    @JoinColumn(name = "agv_id")
     private Agv agv;
 
     @Enumerated(EnumType.STRING)
