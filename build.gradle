@@ -34,7 +34,6 @@ dependencies {
 	// MySQL
     runtimeOnly 'com.mysql:mysql-connector-j'
 
-
 	// Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
@@ -46,6 +45,9 @@ dependencies {
 
 	// openCV
 	implementation files('libs/opencv-490.jar')
+
+	// Swagger
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.0'
 
 
 }

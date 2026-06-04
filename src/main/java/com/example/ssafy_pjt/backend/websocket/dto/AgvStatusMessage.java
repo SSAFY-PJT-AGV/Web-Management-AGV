@@ -7,8 +7,7 @@ import lombok.Setter;
 @Setter
 public class AgvStatusMessage {
 
-    private String messageType;
-    private String agvId;
+    private Integer agvId;
     private Long timestamp;
 
     private String status;

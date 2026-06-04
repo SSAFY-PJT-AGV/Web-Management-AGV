@@ -20,8 +20,8 @@ public class AgvHandler extends TextWebSocketHandler {
     private final ArucoService arucoService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    private final Map<String, WebSocketSession> agvSessions = new ConcurrentHashMap<>();
-    private final Map<String, String> expectedCommandIds = new ConcurrentHashMap<>();
+    private final Map<Integer, WebSocketSession> agvSessions = new ConcurrentHashMap<>();
+    private final Map<Integer, String> expectedCommandIds = new ConcurrentHashMap<>();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
@@ -34,12 +34,13 @@ public class AgvHandler extends TextWebSocketHandler {
         JsonNode root = objectMapper.readTree(message.getPayload());
 
         String messageType = root.path("messageType").asText();
-        String agvId = root.path("agvId").asText();
 
-        if (agvId == null || agvId.isBlank()) {
-            send(session, new ErrorMessage("ERROR", "UNKNOWN", "agvId is required"));
+        if (!root.has("agvId") || root.path("agvId").isNull()) {
+            send(session, new ErrorMessage("ERROR", null, "agvId is required"));
             return;
         }
+
+        Integer agvId = root.path("agvId").asInt();
 
         agvSessions.put(agvId, session);
 
@@ -67,18 +68,28 @@ public class AgvHandler extends TextWebSocketHandler {
         System.out.println("status = " + message.getStatus());
         System.out.println("located = " + message.getLocated());
         System.out.println("cargo = " + message.getCargo());
+        System.out.println("hasImage = " + message.getHasImage());
 
         if (Boolean.TRUE.equals(message.getHasImage())
                 && message.getImage() != null
                 && !message.getImage().isBlank()) {
 
             VisionResultMessage visionResult =
-                    (VisionResultMessage) arucoService.detectFromBase64(message.getAgvId(), message.getImage());
+                    arucoService.detectFromBase64(
+                            message.getAgvId(),
+                            message.getImage()
+                    );
 
-            send(session, visionResult);
+            if (visionResult != null) {
+                send(session, visionResult);
+                System.out.println("VISION_RESULT 전송: markerId = " + visionResult.getMarkerId());
+            } else {
+                System.out.println("마커 미검출 → 응답 없음");
+            }
         }
 
         // 테스트용: IDLE이면 첫 command 전송
+        /*
         if ("IDLE".equals(message.getStatus())
                 && !expectedCommandIds.containsKey(message.getAgvId())) {
 
@@ -92,10 +103,11 @@ public class AgvHandler extends TextWebSocketHandler {
                     "CHIP"
             );
         }
+         */
     }
 
     private void handleCommandResult(WebSocketSession session, CommandResultMessage message) throws Exception {
-        String agvId = message.getAgvId();
+        Integer agvId = message.getAgvId();
         String commandId = message.getCommandId();
         String expectedCommandId = expectedCommandIds.get(agvId);
 
@@ -145,7 +157,7 @@ public class AgvHandler extends TextWebSocketHandler {
 
     private void sendCommandAssign(
             WebSocketSession session,
-            String agvId,
+            Integer agvId,
             String taskId,
             String commandId,
             MissionType command,

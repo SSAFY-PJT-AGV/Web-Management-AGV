@@ -1,4 +1,4 @@
-package com.example.ssafy_pjt.backend.websocket.config;
+package com.example.ssafy_pjt.backend.config;
 
 import com.example.ssafy_pjt.backend.websocket.handler.AgvHandler;
 import lombok.RequiredArgsConstructor;
