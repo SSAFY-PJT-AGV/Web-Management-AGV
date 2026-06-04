@@ -8,6 +8,11 @@ build/
 *.jpg
 received_*.jpg
 
+# OpenCV test images
+src/main/resources/test_images/*.jpg
+src/main/resources/test_images/*.png
+src/main/resources/test_images/*.jpeg
+
 ### STS ###
 .apt_generated
 .classpath

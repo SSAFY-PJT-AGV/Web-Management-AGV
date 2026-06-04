@@ -1,4 +1,4 @@
-package com.example.ssafy_pjt.backend.opencv;
+package com.example.ssafy_pjt.backend.opencv.testcode;
 
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
