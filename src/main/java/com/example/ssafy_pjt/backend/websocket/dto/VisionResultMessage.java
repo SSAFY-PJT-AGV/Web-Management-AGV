@@ -8,8 +8,7 @@ import lombok.Getter;
 public class VisionResultMessage {
 
     private String messageType;
-    private String agvId;
-
+    private Integer agvId;
     private Integer markerId;
     private Double distance;
     private Double angle;
