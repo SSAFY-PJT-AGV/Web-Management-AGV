@@ -1,0 +1,12 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: ssafy-mysql
+
+    environment:
+      MYSQL_ROOT_PASSWORD: ssafy
+      MYSQL_DATABASE: ssafy_pjt
+      TZ: Asia/Seoul
+
+    ports:
+      - "3307:3306"

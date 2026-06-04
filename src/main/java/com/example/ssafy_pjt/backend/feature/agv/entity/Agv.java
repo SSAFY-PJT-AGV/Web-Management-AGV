@@ -18,13 +18,10 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 public class Agv {
-
     @Id
-    @Column(name = "agv_id", length = 50)
-    private String agvId;
-
-    @Column(nullable = false)
-    private Integer battery;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "agv_id")
+    private Integer agvId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
