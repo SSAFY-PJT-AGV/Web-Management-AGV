@@ -28,15 +28,11 @@ public class ArucoService {
         Dictionary dictionary =
                 Objdetect.getPredefinedDictionary(Objdetect.DICT_4X4_50);
 
-        DetectorParameters parameters =
-                new DetectorParameters();
+        DetectorParameters parameters = new DetectorParameters();
 
-        this.detector =
-                new ArucoDetector(dictionary, parameters);
+        this.detector = new ArucoDetector(dictionary, parameters);
 
-        this.cameraMatrix =
-                new Mat(3, 3, CvType.CV_64F);
-
+        this.cameraMatrix = new Mat(3, 3, CvType.CV_64F);
         this.cameraMatrix.put(
                 0,
                 0,
@@ -46,26 +42,20 @@ public class ArucoService {
         );
     }
 
-    public VisionResultMessage detectFromBase64(
-            Integer agvId,
-            String imageBase64
-    ) {
+    public VisionResultMessage detectFromBase64(Integer agvId, String imageBase64) {
         if (imageBase64 == null || imageBase64.isBlank()) {
             return null;
         }
 
         try {
-            String pureBase64 =
-                    removeBase64Prefix(imageBase64);
+            String pureBase64 = removeBase64Prefix(imageBase64);
 
-            byte[] imageBytes =
-                    Base64.getDecoder().decode(pureBase64);
+            byte[] imageBytes = Base64.getDecoder().decode(pureBase64);
 
-            Mat frame =
-                    Imgcodecs.imdecode(
-                            new MatOfByte(imageBytes),
-                            Imgcodecs.IMREAD_COLOR
-                    );
+            Mat frame = Imgcodecs.imdecode(
+                    new MatOfByte(imageBytes),
+                    Imgcodecs.IMREAD_COLOR
+            );
 
             if (frame.empty()) {
                 return null;
@@ -74,15 +64,12 @@ public class ArucoService {
             return detect(agvId, frame);
 
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("[ARUCO ERROR] " + e.getMessage());
             return null;
         }
     }
 
-    private VisionResultMessage detect(
-            Integer agvId,
-            Mat frame
-    ) {
+    private VisionResultMessage detect(Integer agvId, Mat frame) {
         Mat gray = new Mat();
 
         Imgproc.cvtColor(
@@ -91,79 +78,53 @@ public class ArucoService {
                 Imgproc.COLOR_BGR2GRAY
         );
 
-        List<Mat> corners =
-                new ArrayList<>();
+        List<Mat> corners = new ArrayList<>();
+        Mat ids = new Mat();
 
-        Mat ids =
-                new Mat();
-
-        detector.detectMarkers(
-                gray,
-                corners,
-                ids
-        );
+        detector.detectMarkers(gray, corners, ids);
 
         if (ids.empty() || corners.isEmpty()) {
             return null;
         }
 
-        int bestIndex =
-                findLargestMarkerIndex(corners);
+        int bestIndex = findLargestMarkerIndex(corners);
 
-        int markerId =
-                (int) ids.get(bestIndex, 0)[0];
+        int markerId = (int) ids.get(bestIndex, 0)[0];
 
-        Mat corner =
-                corners.get(bestIndex);
+        Mat corner = corners.get(bestIndex);
 
-        double[] topLeft =
-                corner.get(0, 0);
-
-        double[] topRight =
-                corner.get(0, 1);
-
-        double[] bottomRight =
-                corner.get(0, 2);
-
-        double[] bottomLeft =
-                corner.get(0, 3);
+        double[] topLeft = corner.get(0, 0);
+        double[] topRight = corner.get(0, 1);
+        double[] bottomRight = corner.get(0, 2);
+        double[] bottomLeft = corner.get(0, 3);
 
         double centerX =
-                (
-                        topLeft[0]
-                                + topRight[0]
-                                + bottomRight[0]
-                                + bottomLeft[0]
-                ) / 4.0;
+                (topLeft[0] + topRight[0] + bottomRight[0] + bottomLeft[0]) / 4.0;
 
-        double markerPixelWidth =
-                distance2d(topLeft, topRight);
+        double markerPixelWidth = distance2d(topLeft, topRight);
 
         if (markerPixelWidth == 0) {
             return null;
         }
 
-        double fx =
-                cameraMatrix.get(0, 0)[0];
+        double fx = cameraMatrix.get(0, 0)[0];
 
-        double distance =
-                MARKER_SIZE * fx / markerPixelWidth;
+        double distance = MARKER_SIZE * fx / markerPixelWidth;
 
-        double angle =
-                Math.toDegrees(
-                        Math.atan2(
-                                centerX - frame.width() / 2.0,
-                                fx
-                        )
-                );
-
-        return new VisionResultMessage(
-                "VISION_RESULT",
-                agvId,
-                markerId,
-                round(distance),
-                round(angle)
+        double angle = Math.toDegrees(
+                Math.atan2(
+                        centerX - frame.width() / 2.0,
+                        fx
+                )
         );
+
+        return VisionResultMessage.builder()
+                .messageType("VISION_RESULT")
+                .agvId(agvId)
+                .markerId(markerId)
+                .distance(round(distance))
+                .angle(round(angle))
+                .build();
     }
 
     private int findLargestMarkerIndex(List<Mat> corners) {
@@ -171,8 +132,7 @@ public class ArucoService {
         double bestArea = -1;
 
         for (int i = 0; i < corners.size(); i++) {
-            double area =
-                    Imgproc.contourArea(corners.get(i));
+            double area = Imgproc.contourArea(corners.get(i));
 
             if (area > bestArea) {
                 bestArea = area;
@@ -183,24 +143,16 @@ public class ArucoService {
         return bestIndex;
     }
 
-    private double distance2d(
-            double[] a,
-            double[] b
-    ) {
-        double dx =
-                b[0] - a[0];
-
-        double dy =
-                b[1] - a[1];
+    private double distance2d(double[] a, double[] b) {
+        double dx = b[0] - a[0];
+        double dy = b[1] - a[1];
 
         return Math.sqrt(dx * dx + dy * dy);
     }
 
     private String removeBase64Prefix(String imageBase64) {
         if (imageBase64.contains(",")) {
-            return imageBase64.substring(
-                    imageBase64.indexOf(",") + 1
-            );
+            return imageBase64.substring(imageBase64.indexOf(",") + 1);
         }
 
         return imageBase64;
