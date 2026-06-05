@@ -8,7 +8,7 @@ import lombok.Setter;
 public class CommandResultMessage {
 
     private String messageType;
-    private String agvId;
+    private Integer agvId;
 
     private String taskId;
     private String commandId;

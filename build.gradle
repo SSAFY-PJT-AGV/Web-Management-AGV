@@ -34,7 +34,6 @@ dependencies {
 	// MySQL
     runtimeOnly 'com.mysql:mysql-connector-j'
 
-
 	// Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
@@ -44,12 +43,11 @@ dependencies {
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
-	// WebSocket
-	implementation 'org.springframework.boot:spring-boot-starter-websocket'
+	// openCV
+	implementation files('libs/opencv-490.jar')
+
+	// Swagger
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.0'
 
 
-}
-
-tasks.named('test') {
-	useJUnitPlatform()
 }

@@ -9,7 +9,7 @@ import lombok.Getter;
 public class CommandAssignMessage {
 
     private String messageType;
-    private String agvId;
+    private Integer agvId;
     private String taskId;
     private String commandId;
 
