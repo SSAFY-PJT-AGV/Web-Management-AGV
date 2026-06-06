@@ -32,10 +32,13 @@ public class AgvHandler extends TextWebSocketHandler {
     }
 
     @Override
-    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+    protected void handleTextMessage(
+            WebSocketSession session,
+            TextMessage message
+    ) throws Exception {
+
         JsonNode root = objectMapper.readTree(message.getPayload());
 
-        String messageType = root.path("messageType").asText(null);
         Integer agvId = root.path("agvId").asInt(0);
 
         if (agvId == 0) {
@@ -45,27 +48,10 @@ public class AgvHandler extends TextWebSocketHandler {
 
         agvSessionHandler.addSession(agvId, session);
 
-        switch (messageType) {
-            case "STATUS_REPORT" -> {
-                AgvStatusMessage statusMessage =
-                        objectMapper.treeToValue(root, AgvStatusMessage.class);
+        AgvStatusMessage statusMessage =
+                objectMapper.treeToValue(root, AgvStatusMessage.class);
 
-                handleStatusReport(session, statusMessage);
-            }
-
-            case "COMMAND_RESULT" -> {
-                CommandResultMessage resultMessage =
-                        objectMapper.treeToValue(root, CommandResultMessage.class);
-
-                handleCommandResult(session, resultMessage);
-            }
-
-            default -> send(session, new ErrorMessage(
-                    "ERROR",
-                    agvId,
-                    "Unsupported messageType: " + messageType
-            ));
-        }
+        handleStatusReport(session, statusMessage);
     }
 
     private void handleStatusReport(
@@ -82,14 +68,14 @@ public class AgvHandler extends TextWebSocketHandler {
                 && message.getImage() != null
                 && !message.getImage().isBlank()) {
 
-            VisionResultMessage visionResult =
+            ArucoResultMessage arucoResult =
                     arucoService.detectFromBase64(
                             message.getAgvId(),
                             message.getImage()
                     );
 
-            if (visionResult != null) {
-                send(session, visionResult);
+            if (arucoResult != null) {
+                send(session, arucoResult);
             } else {
                 System.out.println("마커 인식 실패: agvId=" + message.getAgvId());
             }

@@ -1,7 +1,7 @@
 package com.example.ssafy_pjt.backend.websocket.sender;
 
 import com.example.ssafy_pjt.backend.websocket.dto.CommandAssignMessage;
-import com.example.ssafy_pjt.backend.websocket.dto.VisionResultMessage;
+import com.example.ssafy_pjt.backend.websocket.dto.ArucoResultMessage;
 import com.example.ssafy_pjt.backend.websocket.session.AgvSessionHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +21,7 @@ public class AgvCommandSender {
         send(agvId, message, "COMMAND_ASSIGN");
     }
 
-    public void sendVisionResult(Integer agvId, VisionResultMessage message) {
+    public void sendVisionResult(Integer agvId, ArucoResultMessage message) {
         send(agvId, message, "VISION_RESULT");
     }
 
