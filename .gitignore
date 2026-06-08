@@ -13,6 +13,28 @@ src/main/resources/test_images/*.jpg
 src/main/resources/test_images/*.png
 src/main/resources/test_images/*.jpeg
 
+# ======================
+# Frontend Environment
+# ======================
+.env
+.env.example
+frontend/**/.env
+frontend/**/.env.*
+
+# 예시 파일은 허용
+!.env.example
+!frontend/**/.env.example
+
+
+# ======================
+# Vue
+# ======================
+node_modules/
+frontend/**/node_modules/
+
+dist/
+frontend/**/dist/
+
 ### STS ###
 .apt_generated
 .classpath
@@ -46,7 +68,7 @@ out/
 
 ### Environment ###
 .env
-.env.*
+.env.example
 *.env
 
 ### Application config with secrets ###

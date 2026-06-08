@@ -17,4 +17,19 @@ public class AgvController {
     public List<AgvResponse> getAgvs() {
         return agvService.getAgvs();
     }
+
+    @PostMapping("/{agvId}/pause")
+    public void pauseAgv(@PathVariable Integer agvId) {
+        agvService.pauseAgv(agvId);
+    }
+
+    @PostMapping("/{agvId}/resume")
+    public void resumeAgv(@PathVariable Integer agvId) {
+        agvService.resumeAgv(agvId);
+    }
+
+    @PostMapping("/{agvId}/cancel-current-task")
+    public void cancelCurrentTask(@PathVariable Integer agvId) {
+        agvService.cancelCurrentTask(agvId);
+    }
 }

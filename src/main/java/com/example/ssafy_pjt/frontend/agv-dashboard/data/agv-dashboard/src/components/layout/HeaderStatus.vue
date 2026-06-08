@@ -1,0 +1,2 @@
+<template><header class="h-14 panel-frame flex items-center justify-between px-5"><div><h1 class="text-xl font-black tracking-[.18em]">SMART FACTORY AGV CONTROL</h1><p class="text-xs text-slate-400">Industrial HMI / SCADA Dashboard</p></div><div class="flex gap-3 text-xs"><span class="status-badge text-[#22D3EE]">WS {{ connected?'ONLINE':'MOCK' }}</span><span class="status-badge text-[#22C55E]">2 AGV ACTIVE</span></div></header></template>
+<script setup>defineProps({connected:Boolean})</script>

@@ -12,7 +12,7 @@ import java.util.Optional;
 public interface MissionRepository extends JpaRepository<Mission, Long> {
 
     List<Mission> findByStatusOrderByCreatedAtAsc(MissionStatus status);
-
+    List<Mission> findByStatusNotOrderBySequenceOrderAsc(MissionStatus status);
     Optional<Mission> findFirstByMissionTypeInAndStatusOrderByCreatedAtAsc(
             List<MissionType> missionTypes,
             MissionStatus status
