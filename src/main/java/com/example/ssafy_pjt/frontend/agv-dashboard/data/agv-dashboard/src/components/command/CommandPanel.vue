@@ -1,7 +1,0 @@
-<template><div class="space-y-3"><form @submit.prevent="submitTask" class="queue-item p-3 space-y-2"><b>생산 요청</b><select v-model="productType" class="w-full bg-[#05080D] border border-[#1E3A4F] p-2"><option value="CAR_CONTROL_UNIT">차량 제어 장치</option><option value="CAMERA_MODULE">카메라 센서 모듈</option><option value="BATTERY_PACK">배터리 팩</option></select><input v-model.number="quantity" type="number" min="1" class="w-full bg-[#05080D] border border-[#1E3A4F] p-2"/><button class="w-full neon-border p-2">요청 생성</button></form><form @submit.prevent="submitRep" class="queue-item p-3 space-y-2"><b>재고 보급 요청</b><select v-model="material" class="w-full bg-[#05080D] border border-[#1E3A4F] p-2"><option value="CHIP">칩</option><option value="SENSOR">센서</option><option value="BATTERY">배터리 부품</option></select><input v-model.number="repQty" type="number" min="1" class="w-full bg-[#05080D] border border-[#1E3A4F] p-2"/><button class="w-full border border-[#22C55E] p-2">보급 요청</button></form></div></template>
-<script setup>
-import { ref } from 'vue'; import { taskApi } from '../../api/taskApi'; import { inventoryApi } from '../../api/inventoryApi'
-const productType=ref('CAR_CONTROL_UNIT'), quantity=ref(10), material=ref('CHIP'), repQty=ref(20)
-const submitTask=()=>taskApi.createTask({productType:productType.value,quantity:quantity.value})
-const submitRep=()=>inventoryApi.createReplenishment({material:material.value,quantity:repQty.value})
-</script>

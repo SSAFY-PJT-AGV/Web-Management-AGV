@@ -5,9 +5,7 @@ import com.example.ssafy_pjt.backend.feature.task.enums.TaskPriority;
 import com.example.ssafy_pjt.backend.feature.task.enums.TaskStatus;
 import com.example.ssafy_pjt.backend.feature.task.enums.TaskType;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -15,7 +13,9 @@ import java.time.LocalDateTime;
 @Table(name = "production_task")
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
 public class ProductionTask {
 
     @Id
@@ -35,12 +35,15 @@ public class ProductionTask {
     private TaskType taskType;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private TaskPriority priority;
+    @Column(nullable = false)
+    @Builder.Default
+    private TaskPriority priority = TaskPriority.NORMAL;
+
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private TaskStatus status;
+    @Column(nullable = false)
+    @Builder.Default
+    private TaskStatus status = TaskStatus.READY;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
