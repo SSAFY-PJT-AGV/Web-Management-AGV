@@ -6,11 +6,12 @@ import com.example.ssafy_pjt.backend.feature.mission.entity.Mission;
 import com.example.ssafy_pjt.backend.feature.mission.enums.MissionStatus;
 import com.example.ssafy_pjt.backend.feature.mission.enums.MissionType;
 import com.example.ssafy_pjt.backend.feature.mission.repository.MissionRepository;
+import com.example.ssafy_pjt.backend.feature.mission.service.MissionDispatchService;
 import com.example.ssafy_pjt.backend.feature.task.dto.TaskCreateRequest;
 import com.example.ssafy_pjt.backend.feature.task.dto.TaskResponse;
 import com.example.ssafy_pjt.backend.feature.task.entity.ProductionTask;
+import com.example.ssafy_pjt.backend.feature.task.enums.TaskPriority;
 import com.example.ssafy_pjt.backend.feature.task.enums.TaskStatus;
-import com.example.ssafy_pjt.backend.feature.task.enums.TaskType;
 import com.example.ssafy_pjt.backend.feature.task.repository.ProductionTaskRepository;
 import com.example.ssafy_pjt.backend.feature.zone.entity.Zone;
 import com.example.ssafy_pjt.backend.feature.zone.repository.ZoneRepository;
@@ -29,24 +30,29 @@ public class TaskService {
     private final ProductMaterialRepository productMaterialRepository;
     private final MissionRepository missionRepository;
     private final ZoneRepository zoneRepository;
+    private final MissionDispatchService missionDispatchService;
 
     @Transactional
     public TaskResponse createTask(TaskCreateRequest request) {
-        LocalDateTime now = LocalDateTime.now();
 
-        ProductionTask task = new ProductionTask();
-        task.setProductType(request.getProductType());
-        task.setQuantity(request.getQuantity());
-        task.setTaskType(TaskType.PRODUCTION);
-        task.setPriority(request.getPriority());
-        task.setStatus(TaskStatus.RUNNING);
-        task.setCreatedAt(now);
-        task.setStartedAt(now);
-        task.setUpdatedAt(now);
+        ProductionTask task = ProductionTask.builder()
+                .taskType(request.getTaskType())
+                .productType(request.getProductType())
+                .quantity(request.getQuantity())
+                .priority(
+                        request.getPriority() != null
+                                ? request.getPriority()
+                                : TaskPriority.NORMAL
+                )
+                .status(TaskStatus.READY)
+                .build();
 
         ProductionTask savedTask = productionTaskRepository.save(task);
 
         createMissions(savedTask);
+
+        missionDispatchService.dispatchNextMission(1);
+        missionDispatchService.dispatchNextMission(2);
 
         return new TaskResponse(savedTask);
     }

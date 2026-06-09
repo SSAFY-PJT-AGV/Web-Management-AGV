@@ -1,5 +1,7 @@
 package com.example.ssafy_pjt.backend.websocket.handler;
 
+import com.example.ssafy_pjt.backend.feature.agv.service.AgvService;
+import com.example.ssafy_pjt.backend.feature.agv.service.ChipScenarioTestService;
 import com.example.ssafy_pjt.backend.feature.marker.service.ArucoService;
 import com.example.ssafy_pjt.backend.feature.mission.enums.MissionType;
 import com.example.ssafy_pjt.backend.websocket.dto.*;
@@ -20,8 +22,10 @@ public class AgvHandler extends TextWebSocketHandler {
 
     private final ArucoService arucoService;
     private final AgvSessionHandler agvSessionHandler;
+    private final AgvService agvService;
+    private final ChipScenarioTestService chipScenarioTestService;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     private final Map<Integer, Long> expectedCommandIds = new ConcurrentHashMap<>();
 
@@ -47,6 +51,7 @@ public class AgvHandler extends TextWebSocketHandler {
         }
 
         agvSessionHandler.addSession(agvId, session);
+        agvService.markConnected(agvId);
 
         AgvStatusMessage statusMessage =
                 objectMapper.treeToValue(root, AgvStatusMessage.class);
@@ -79,6 +84,10 @@ public class AgvHandler extends TextWebSocketHandler {
             } else {
                 System.out.println("마커 인식 실패: agvId=" + message.getAgvId());
             }
+        }
+
+        if ("DONE".equals(message.getEvent())) {
+            chipScenarioTestService.handleAgvDone(message);
         }
     }
 
@@ -141,5 +150,25 @@ public class AgvHandler extends TextWebSocketHandler {
         session.sendMessage(
                 new TextMessage(objectMapper.writeValueAsString(response))
         );
+    }
+
+    @Override
+    public void afterConnectionClosed(
+            WebSocketSession session,
+            CloseStatus status
+    ) {
+        Integer agvId =
+                agvSessionHandler.findAgvIdBySession(session);
+
+        agvSessionHandler.removeSession(session);
+
+        if (agvId != null) {
+            agvService.markDisconnected(agvId);
+            expectedCommandIds.remove(agvId);
+
+            System.out.println("AGV 연결 종료: agvId=" + agvId);
+        } else {
+            System.out.println("AGV 연결 종료: sessionId=" + session.getId());
+        }
     }
 }

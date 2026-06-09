@@ -39,8 +39,8 @@ INSERT IGNORE INTO agv (
     last_seen_at
 )
 VALUES
-    (1, 'IDLE', NULL, NULL, 'NONE', NULL, NULL),
-    (2, 'IDLE', NULL, NULL, 'NONE', NULL, NULL);
+    (1, 'OFFLINE', NULL, NULL, 'NONE', NULL, NULL),
+    (2, 'OFFLINE', NULL, NULL, 'NONE', NULL, NULL);
 
 -- Inventory
 INSERT IGNORE INTO inventory (
@@ -87,3 +87,9 @@ VALUES
     (301, 'MATERIAL_BOX', 1, 6, NULL, NULL, 'CHIP 보관 상자 마커', true),
     (302, 'MATERIAL_BOX', 2, 6, NULL, NULL, 'SENSOR 보관 상자 마커', true),
     (303, 'MATERIAL_BOX', 3, 6, NULL, NULL, 'BATTERY 보관 상자 마커', true);
+
+-- System
+INSERT INTO system_state
+(id, mode, scenario_status, active_line)
+VALUES
+    (1, 'AUTO', 'READY', 'LINE_A');
