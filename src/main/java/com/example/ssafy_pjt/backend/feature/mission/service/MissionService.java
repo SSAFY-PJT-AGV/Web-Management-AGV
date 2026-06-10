@@ -14,7 +14,9 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class MissionService {
+
     private final MissionRepository missionRepository;
+
 
     @Transactional(readOnly = true)
     public List<MissionResponse> getMissions() {
@@ -24,20 +26,41 @@ public class MissionService {
                 .toList();
     }
 
+
     @Transactional(readOnly = true)
     public List<MissionSummaryResponse> getMissionSummary() {
-        return missionRepository.findByStatusNotOrderBySequenceOrderAsc(MissionStatus.COMPLETED)
+
+        return missionRepository
+                .findByStatusNotOrderBySequenceOrderAsc(
+                        MissionStatus.COMPLETED
+                )
                 .stream()
                 .map(mission -> new MissionSummaryResponse(
+
                         mission.getSequenceOrder(),
-                        toJobName(mission.getMissionType()),
+
+                        toJobName(
+                                mission.getMissionType()
+                        ),
+
+                        // 추가된 부분
+                        mission.getAgv() == null
+                                ? null
+                                : mission.getAgv().getAgvId(),
+
                         mission.getAgv() == null
                                 ? "배정 대기"
-                                : "AGV%02d".formatted(mission.getAgv().getAgvId()),
-                        toDisplayStatus(mission.getStatus())
+                                : "AGV%02d".formatted(
+                                mission.getAgv().getAgvId()
+                        ),
+
+                        toDisplayStatus(
+                                mission.getStatus()
+                        )
                 ))
                 .toList();
     }
+
 
     private String toJobName(MissionType missionType) {
         return switch (missionType) {
@@ -58,6 +81,7 @@ public class MissionService {
             default -> "AGV 작업";
         };
     }
+
 
     private String toDisplayStatus(MissionStatus status) {
         return switch (status) {

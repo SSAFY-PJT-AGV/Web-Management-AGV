@@ -182,29 +182,36 @@ onMounted(async () => {
           map.updateAgv(msg.data)
           break
 
-        case 'MISSION_QUEUE_UPDATED':
-          mission.setItems(msg.data)
+        case 'TASK_REFRESH':
+          task.load()
+            .then(() => console.log('[TASK AFTER LOAD]', task.items))
+            .catch(console.error)
           break
 
-        case 'MISSION_CREATED':
-        case 'MISSION_UPDATED':
-          mission.update(msg.data)
+        case 'MISSION_REFRESH':
+          mission.load()
+            .then(() => {
+              console.log('[MISSION AFTER LOAD]', mission.items)
+              console.log('[AGV01 AFTER LOAD]', agv01Missions.value)
+              console.log('[AGV02 AFTER LOAD]', agv02Missions.value)
+            })
+            .catch(console.error)
           break
 
-        case 'MISSION_COMPLETED':
-          mission.remove(msg.data.missionId)
+        case 'INVENTORY_REFRESH':
+          inventory.load().catch(console.error)
           break
 
-        case 'INVENTORY_UPDATED':
-          inventory.setItems(msg.data)
+        case 'EVENT_REFRESH':
+          event.load().catch(console.error)
           break
 
-        case 'EVENT_LOG_CREATED':
-          event.push(msg.data)
+        case 'AI_REFRESH':
+          rec.load().catch(console.error)
           break
 
-        case 'AI_RECOMMENDATION_UPDATED':
-          rec.setItems(msg.data)
+        case 'MAP_REFRESH':
+          map.load().catch(console.error)
           break
 
         default:

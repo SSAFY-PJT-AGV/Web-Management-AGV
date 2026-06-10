@@ -6,6 +6,7 @@ import com.example.ssafy_pjt.backend.feature.inventory.entity.Inventory;
 import com.example.ssafy_pjt.backend.feature.inventory.enums.InventoryStatus;
 import com.example.ssafy_pjt.backend.feature.inventory.repository.InventoryRepository;
 import com.example.ssafy_pjt.backend.feature.mission.service.ReplenishmentService;
+import com.example.ssafy_pjt.backend.websocket.sender.DashboardBroadcastService;
 import com.example.ssafy_pjt.backend.websocket.sender.DashboardSender;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ public class InventoryService {
     private final InventoryRepository inventoryRepository;
     private final ReplenishmentService replenishmentService;
     private final DashboardSender dashboardSender;
+    private final DashboardBroadcastService dashboardBroadcastService;
 
     @Transactional(readOnly = true)
     public List<InventoryResponse> getInventories() {
@@ -44,6 +46,7 @@ public class InventoryService {
 
         if (request.getCurrentQuantity() != null) {
             inventory.setCurrentQuantity(request.getCurrentQuantity());
+            dashboardBroadcastService.inventoryRefresh();
         }
 
         if (request.getReservedQuantity() != null) {

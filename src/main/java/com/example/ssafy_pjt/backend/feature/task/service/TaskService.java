@@ -7,6 +7,8 @@ import com.example.ssafy_pjt.backend.feature.mission.enums.MissionStatus;
 import com.example.ssafy_pjt.backend.feature.mission.enums.MissionType;
 import com.example.ssafy_pjt.backend.feature.mission.repository.MissionRepository;
 import com.example.ssafy_pjt.backend.feature.mission.service.MissionDispatchService;
+import com.example.ssafy_pjt.backend.feature.product.entity.Product;
+import com.example.ssafy_pjt.backend.feature.product.repository.ProductRepository;
 import com.example.ssafy_pjt.backend.feature.task.dto.TaskCreateRequest;
 import com.example.ssafy_pjt.backend.feature.task.dto.TaskResponse;
 import com.example.ssafy_pjt.backend.feature.task.entity.ProductionTask;
@@ -15,6 +17,7 @@ import com.example.ssafy_pjt.backend.feature.task.enums.TaskStatus;
 import com.example.ssafy_pjt.backend.feature.task.repository.ProductionTaskRepository;
 import com.example.ssafy_pjt.backend.feature.zone.entity.Zone;
 import com.example.ssafy_pjt.backend.feature.zone.repository.ZoneRepository;
+import com.example.ssafy_pjt.backend.websocket.sender.DashboardBroadcastService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,9 +31,11 @@ public class TaskService {
 
     private final ProductionTaskRepository productionTaskRepository;
     private final ProductMaterialRepository productMaterialRepository;
+    private final ProductRepository productRepository;
     private final MissionRepository missionRepository;
     private final ZoneRepository zoneRepository;
     private final MissionDispatchService missionDispatchService;
+    private final DashboardBroadcastService dashboardBroadcastService;
 
     @Transactional
     public TaskResponse createTask(TaskCreateRequest request) {
@@ -49,13 +54,21 @@ public class TaskService {
 
         ProductionTask savedTask = productionTaskRepository.save(task);
 
-        createMissions(savedTask);
+        Product product = productRepository.findByProductType(savedTask.getProductType())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "제품 정보를 찾을 수 없습니다. productType=" + savedTask.getProductType()
+                ));
+
+        createMissions(savedTask, product);
 
         // 1. 생성된 CREATED Mission들을 AGV별 작업 큐에 전부 배정
         missionDispatchService.assignCreatedMissionsToAgvQueues();
 
         // 2. 각 AGV 큐의 첫 번째 Mission만 실제 실행 상태로 전환
         missionDispatchService.dispatchAvailableAgvs();
+
+        // 3. 생산 요청 목록 갱신
+        dashboardBroadcastService.taskRefresh();
 
         return new TaskResponse(savedTask);
     }
@@ -76,9 +89,9 @@ public class TaskService {
         return new TaskResponse(task);
     }
 
-    private void createMissions(ProductionTask task) {
+    private void createMissions(ProductionTask task, Product product) {
         List<ProductMaterial> productMaterials =
-                productMaterialRepository.findByProductType(task.getProductType());
+                productMaterialRepository.findByProduct_ProductType(task.getProductType());
 
         Zone materialStorage = zoneRepository.findByZoneName("MATERIAL_BOX_STORAGE")
                 .orElseThrow(() -> new IllegalArgumentException("자재 보관 구역이 없습니다."));
@@ -98,40 +111,48 @@ public class TaskService {
             int requiredQuantity =
                     productMaterial.getQuantityPerUnit() * task.getQuantity();
 
+            // AGV1: 자재 보관 상자에서 부품 상자 픽업
             createMission(
                     task,
                     MissionType.PICK_FROM_STORAGE,
                     productMaterial,
+                    product,
                     requiredQuantity,
-                    null,
                     materialStorage,
+                    null,
                     sequence++
             );
 
+            // AGV1: 컨베이어 진입점에 부품 투입
             createMission(
                     task,
                     MissionType.DROP_TO_CONVEYOR,
                     productMaterial,
+                    product,
                     requiredQuantity,
                     materialStorage,
                     conveyorStart,
                     sequence++
             );
 
+            // AGV2: 컨베이어 출고점에서 완제품/부품 픽업
             createMission(
                     task,
                     MissionType.PICK_FROM_CONVEYOR,
                     productMaterial,
+                    product,
                     requiredQuantity,
                     conveyorEnd,
                     null,
                     sequence++
             );
 
+            // AGV2: 완제품 상자 보관 구역에 제품별 상자 보관
             createMission(
                     task,
                     MissionType.DROP_TO_FINISHED_BOX_STORAGE,
                     productMaterial,
+                    product,
                     requiredQuantity,
                     conveyorEnd,
                     finishedBoxStorage,
@@ -144,6 +165,7 @@ public class TaskService {
             ProductionTask task,
             MissionType missionType,
             ProductMaterial productMaterial,
+            Product product,
             int quantity,
             Zone sourceZone,
             Zone targetZone,
@@ -154,7 +176,13 @@ public class TaskService {
         mission.setTask(task);
         mission.setAgv(null);
         mission.setMissionType(missionType);
+
+        // 자재 기반 Mission 목적지 계산용
         mission.setMaterial(productMaterial.getMaterial());
+
+        // 완제품 보관 Mission marker 11/12/13 계산용
+        mission.setProduct(product);
+
         mission.setStatus(MissionStatus.CREATED);
         mission.setSequenceOrder(sequenceOrder);
         mission.setQuantity(quantity);
