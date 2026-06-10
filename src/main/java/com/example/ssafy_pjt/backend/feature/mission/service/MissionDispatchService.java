@@ -4,7 +4,7 @@ import com.example.ssafy_pjt.backend.feature.agv.entity.Agv;
 import com.example.ssafy_pjt.backend.feature.agv.enums.AgvRole;
 import com.example.ssafy_pjt.backend.feature.agv.enums.AgvStatus;
 import com.example.ssafy_pjt.backend.feature.agv.repository.AgvRepository;
-import com.example.ssafy_pjt.backend.feature.mission.dto.MissionResponse;
+import com.example.ssafy_pjt.backend.feature.marker.service.MarkerResolveService;
 import com.example.ssafy_pjt.backend.feature.mission.entity.Mission;
 import com.example.ssafy_pjt.backend.feature.mission.enums.MissionStatus;
 import com.example.ssafy_pjt.backend.feature.mission.enums.MissionType;
@@ -12,15 +12,14 @@ import com.example.ssafy_pjt.backend.feature.mission.repository.MissionRepositor
 import com.example.ssafy_pjt.backend.feature.reservation.service.ReservationService;
 import com.example.ssafy_pjt.backend.websocket.dto.CommandAssignMessage;
 import com.example.ssafy_pjt.backend.websocket.sender.AgvCommandSender;
-import com.example.ssafy_pjt.backend.websocket.sender.DashboardSender;
+import com.example.ssafy_pjt.backend.websocket.sender.DashboardBroadcastService;
+import com.example.ssafy_pjt.backend.websocket.session.AgvSessionHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -30,7 +29,10 @@ public class MissionDispatchService {
     private final AgvRepository agvRepository;
     private final AgvCommandSender agvCommandSender;
     private final ReservationService reservationService;
-    private final DashboardSender dashboardSender;
+    private final MarkerResolveService markerResolveService;
+    private final MissionPriorityService missionPriorityService;
+    private final AgvSessionHandler agvSessionHandler;
+    private final DashboardBroadcastService dashboardBroadcastService;
 
     @Transactional
     public void assignCreatedMissionsToAgvQueues() {
@@ -42,9 +44,9 @@ public class MissionDispatchService {
 
             mission.setAgv(selectedAgv);
             mission.setStatus(MissionStatus.ASSIGNED);
-
-            broadcastMissionUpdated(mission);
         }
+
+        dashboardBroadcastService.missionRefresh();
     }
 
     @Transactional
@@ -76,8 +78,8 @@ public class MissionDispatchService {
             agv.setStatus(AgvStatus.WAITING);
             agv.setCurrentMission(mission);
 
-            broadcastMissionUpdated(mission);
-            broadcastAgvStatus(agv);
+            dashboardBroadcastService.missionRefresh();
+            dashboardBroadcastService.mapRefresh();
 
             return mission;
         }
@@ -91,50 +93,31 @@ public class MissionDispatchService {
         agv.setStatus(AgvStatus.ASSIGNED);
         agv.setCurrentMission(mission);
 
-        sendCommandAssign(agvId, mission);
+        boolean sent = sendCommandAssign(agvId, mission);
 
-        broadcastMissionUpdated(mission);
-        broadcastAgvStatus(agv);
+        if (!sent) {
+            mission.setStatus(MissionStatus.ASSIGNED);
+            agv.setStatus(AgvStatus.IDLE);
+            agv.setCurrentMission(null);
+
+            dashboardBroadcastService.missionRefresh();
+            dashboardBroadcastService.mapRefresh();
+
+            return null;
+        }
+
+        dashboardBroadcastService.missionRefresh();
+        dashboardBroadcastService.mapRefresh();
 
         return mission;
     }
 
-    private void broadcastMissionUpdated(Mission mission) {
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("type", "MISSION_UPDATED");
-        payload.put("data", new MissionResponse(mission));
-
-        dashboardSender.broadcast(payload);
-    }
-
-    private void broadcastAgvStatus(Agv agv) {
-        Map<String, Object> data = new HashMap<>();
-        data.put("agvId", agv.getAgvId());
-        data.put("status", agv.getStatus().name());
-        data.put("currentMarkerId", agv.getCurrentMarker() == null
-                ? null
-                : agv.getCurrentMarker().getMarkerId());
-        data.put("currentMarker", agv.getCurrentMarker() == null
-                ? null
-                : agv.getCurrentMarker().getMarkerId());
-        data.put("currentMissionId", agv.getCurrentMission() == null
-                ? null
-                : agv.getCurrentMission().getMissionId());
-        data.put("cargoType", agv.getCargoType() == null
-                ? null
-                : agv.getCargoType().name());
-        data.put("cargo", agv.getCargoMaterial() == null
-                ? null
-                : agv.getCargoMaterial().getMaterialCode());
-
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("type", "AGV_STATUS");
-        payload.put("data", data);
-
-        dashboardSender.broadcast(payload);
-    }
-
     private boolean isDispatchable(Agv agv) {
+        if (!agvSessionHandler.isConnected(agv.getAgvId())) {
+            System.out.println("[DISPATCH SKIP] AGV not connected. agvId=" + agv.getAgvId());
+            return false;
+        }
+
         return agv.getStatus() == AgvStatus.IDLE
                 || agv.getStatus() == AgvStatus.WAITING;
     }
@@ -200,12 +183,22 @@ public class MissionDispatchService {
     }
 
     private Mission findNextAssignedMissionForAgv(Integer agvId) {
+        Agv agv = getAgv(agvId);
+
         return missionRepository.findByAgv_AgvIdAndStatusOrderBySequenceOrderAsc(
                         agvId,
                         MissionStatus.ASSIGNED
                 )
                 .stream()
-                .findFirst()
+                .max(Comparator
+                        .comparingInt((Mission mission) ->
+                                missionPriorityService.calculateScore(mission, agv)
+                        )
+                        .thenComparing(
+                                Mission::getSequenceOrder,
+                                Comparator.reverseOrder()
+                        )
+                )
                 .orElse(null);
     }
 
@@ -225,14 +218,16 @@ public class MissionDispatchService {
                 || type == MissionType.DROP_TO_STORAGE;
     }
 
-    private void sendCommandAssign(Integer agvId, Mission mission) {
+    private boolean sendCommandAssign(Integer agvId, Mission mission) {
+        Integer destination = markerResolveService.resolveDestinationMarkerId(mission);
+
         CommandAssignMessage message = CommandAssignMessage.builder()
                 .messageType("COMMAND_ASSIGN")
                 .agvId(agvId)
-                .taskId(mission.getTask().getTaskId())
+                .taskId(mission.getTask() == null ? null : mission.getTask().getTaskId())
                 .commandId(mission.getMissionId())
                 .command(mission.getMissionType())
-                .destination(null)
+                .destination(destination)
                 .cargo(
                         mission.getMaterial() == null
                                 ? null
@@ -242,8 +237,10 @@ public class MissionDispatchService {
 
         try {
             agvCommandSender.sendCommand(agvId, message);
+            return true;
         } catch (Exception e) {
             System.out.println("[COMMAND_ASSIGN SEND FAIL] agvId=" + agvId + ", reason=" + e.getMessage());
+            return false;
         }
     }
 

@@ -3,6 +3,7 @@ package com.example.ssafy_pjt.backend.websocket.handler;
 import com.example.ssafy_pjt.backend.feature.agv.service.AgvService;
 import com.example.ssafy_pjt.backend.feature.agv.service.ChipScenarioTestService;
 import com.example.ssafy_pjt.backend.feature.marker.service.ArucoService;
+import com.example.ssafy_pjt.backend.feature.mission.service.MissionDispatchService;
 import com.example.ssafy_pjt.backend.feature.mission.service.MissionResultService;
 import com.example.ssafy_pjt.backend.websocket.dto.AgvStatusMessage;
 import com.example.ssafy_pjt.backend.websocket.dto.ArucoResultMessage;
@@ -31,6 +32,7 @@ public class AgvHandler extends TextWebSocketHandler {
     private final AgvService agvService;
     private final ChipScenarioTestService chipScenarioTestService;
     private final MissionResultService missionResultService;
+    private final MissionDispatchService missionDispatchService;
     private final ObjectMapper objectMapper;
     private final DashboardSender dashboardSender;
 
@@ -113,6 +115,11 @@ public class AgvHandler extends TextWebSocketHandler {
 
         if ("DONE".equals(message.getEvent())) {
             handleDoneEvent(session, message);
+            return;
+        }
+
+        if ("IDLE".equals(message.getStatus())) {
+            missionDispatchService.dispatchNextMission(message.getAgvId());
         }
     }
 

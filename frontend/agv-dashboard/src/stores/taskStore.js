@@ -14,7 +14,12 @@ export const useTaskStore = defineStore('task', {
             this.error = null
 
             try {
-                this.items = await taskApi.list()
+                const result = await taskApi.list()
+
+                this.items = Array.isArray(result)
+                    ? result
+                    : result?.data ?? []
+
             } catch (e) {
                 console.error(e)
                 this.error = '작업 목록 조회 실패'
@@ -39,7 +44,9 @@ export const useTaskStore = defineStore('task', {
         },
 
         setItems(data) {
-            this.items = data
+            this.items = Array.isArray(data)
+                ? data
+                : data?.data ?? []
         },
     },
 })

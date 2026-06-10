@@ -4,6 +4,7 @@ import com.example.ssafy_pjt.backend.feature.agv.entity.Agv;
 import com.example.ssafy_pjt.backend.feature.material.entity.Material;
 import com.example.ssafy_pjt.backend.feature.mission.enums.MissionStatus;
 import com.example.ssafy_pjt.backend.feature.mission.enums.MissionType;
+import com.example.ssafy_pjt.backend.feature.product.entity.Product;
 import com.example.ssafy_pjt.backend.feature.task.entity.ProductionTask;
 import com.example.ssafy_pjt.backend.feature.zone.entity.Zone;
 import jakarta.persistence.*;
@@ -49,6 +50,10 @@ public class Mission {
     @JoinColumn(name = "material_id")
     private Material material;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id")
+    private Product product;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private MissionStatus status;
@@ -77,7 +82,6 @@ public class Mission {
 
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
-
 
     @PrePersist
     protected void onCreate() {
