@@ -17,7 +17,7 @@ export const useMissionStore = defineStore('mission', {
             this.error = null
 
             try {
-                const data = await missionApi.queue()
+                const data = await missionApi.list()
                 this.setItems(data)
 
             } catch (e) {

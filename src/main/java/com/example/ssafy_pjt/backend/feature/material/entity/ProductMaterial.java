@@ -1,6 +1,7 @@
 package com.example.ssafy_pjt.backend.feature.material.entity;
 
-import com.example.ssafy_pjt.backend.feature.task.enums.ProductType;
+import com.example.ssafy_pjt.backend.feature.product.entity.Product;
+import com.example.ssafy_pjt.backend.feature.product.enums.ProductType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -22,9 +23,9 @@ public class ProductMaterial {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "product_type", nullable = false, length = 50)
-    private ProductType productType;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id", nullable = false)
+    private Product product;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "material_id", nullable = false)

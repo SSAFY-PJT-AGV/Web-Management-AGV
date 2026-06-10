@@ -1,19 +1,11 @@
 <template>
   <main class="grid-background h-screen overflow-hidden p-2">
     <div class="h-full flex flex-col gap-2">
-
       <HeaderStatus :connected="connected" />
 
-      <section
-        class="grid grid-cols-[29%_44%_25%] gap-2 flex-1 min-h-0 overflow-hidden"
-      >
-        <!-- Left Column -->
+      <section class="grid grid-cols-[29%_44%_25%] gap-2 flex-1 min-h-0 overflow-hidden">
         <aside class="flex flex-col gap-3 min-h-0">
-
-          <PanelFrame
-            title="AGV STATUS"
-            class="shrink-0"
-          >
+          <PanelFrame title="AGV STATUS" class="shrink-0">
             <div class="space-y-3">
               <AgvStatusCard
                 v-for="a in agv.items"
@@ -23,43 +15,26 @@
             </div>
           </PanelFrame>
 
-
-          <PanelFrame
-            title="AGV CONTROL"
-            class="shrink-0"
-          >
+          <PanelFrame title="AGV CONTROL" class="shrink-0">
             <AgvControl :agvs="agv.items" />
           </PanelFrame>
 
-
-          <!-- AGV Mission Queues -->
           <div class="grid grid-cols-2 gap-3 flex-1 min-h-0">
-
-            <PanelFrame
-              title="AGV01 MISSION QUEUE"
-              class="min-h-0 overflow-hidden"
-            >
+            <PanelFrame title="AGV01 MISSION QUEUE" class="min-h-0 overflow-hidden">
               <div class="h-full min-h-0 overflow-y-auto pr-1">
                 <MissionQueue :items="agv01Missions" />
               </div>
             </PanelFrame>
 
-            <PanelFrame
-              title="AGV02 MISSION QUEUE"
-              class="min-h-0 overflow-hidden"
-            >
+            <PanelFrame title="AGV02 MISSION QUEUE" class="min-h-0 overflow-hidden">
               <div class="h-full min-h-0 overflow-y-auto pr-1">
                 <MissionQueue :items="agv02Missions" />
               </div>
             </PanelFrame>
-
           </div>
-
         </aside>
 
-        <!-- Center Column -->
         <section class="flex flex-col gap-3 min-h-0">
-
           <PanelFrame title="DISPATCH STATUS" class="shrink-0">
             <DispatchStatus
               :agvs="agv.items"
@@ -68,60 +43,43 @@
             />
           </PanelFrame>
 
-          <PanelFrame
-            title="FACTORY DIGITAL MAP"
-            class="flex-[1.7] min-h-0"
-          >
-            <FactoryMap
-              :markers="map.markers"
-              :agvs="map.agvs"
-              :marker-by-id="map.markerById"
-            />
+          <PanelFrame title="FACTORY DIGITAL MAP" class="flex-[1.7] min-h-0 overflow-hidden">
+            <div class="h-full min-h-0 overflow-hidden">
+              <FactoryMap
+                :markers="map.markers"
+                :agvs="map.agvs"
+                :marker-by-id="map.markerById"
+              />
+            </div>
           </PanelFrame>
 
-          <PanelFrame
-            title="EVENT LOG"
-            class="flex-[0.75] min-h-0 overflow-hidden"
-          >
+          <PanelFrame title="EVENT LOG" class="flex-[0.75] min-h-0 overflow-hidden">
             <div class="h-full min-h-0 overflow-y-auto pr-1">
               <EventLog :items="event.items" />
             </div>
           </PanelFrame>
-
         </section>
 
-        <!-- Right Column -->
         <aside class="flex flex-col gap-2 min-h-0 overflow-hidden">
-
           <PanelFrame title="OPERATOR REQUEST" class="shrink-0">
             <CommandPanel />
           </PanelFrame>
 
-          <PanelFrame
-            title="INVENTORY"
-            class="flex-[1.1] min-h-0 overflow-hidden"
-          >
+          <PanelFrame title="INVENTORY" class="flex-[1.1] min-h-0 overflow-hidden">
             <InventoryPanel :items="inventory.items" />
           </PanelFrame>
 
-          <PanelFrame
-            title="AI RECOMMENDATION"
-            class="h-[160px] min-h-0 overflow-hidden relative"
-          >
+          <PanelFrame title="AI RECOMMENDATION" class="h-[160px] min-h-0 overflow-hidden relative">
             <div class="absolute inset-x-4 top-[54px] bottom-3 overflow-y-auto pr-2">
               <AiRecommendation :items="rec.items" />
             </div>
           </PanelFrame>
 
-          <PanelFrame
-            title="OUTBOUND QUEUE"
-            class="flex-1 min-h-0 overflow-hidden"
-          >
+          <PanelFrame title="OUTBOUND QUEUE" class="flex-1 min-h-0 overflow-hidden">
             <div class="h-full min-h-0 overflow-y-auto pr-1">
-              <OutboundQueue />
+              <OutboundQueue :items="task.items" />
             </div>
           </PanelFrame>
-
         </aside>
       </section>
     </div>
@@ -133,19 +91,17 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import HeaderStatus from '../components/layout/HeaderStatus.vue'
 import PanelFrame from '../components/layout/PanelFrame.vue'
-
 import AgvStatusCard from '../components/agv/AgvStatusCard.vue'
 import AgvControl from '../components/agv/AgvControl.vue'
-
 import MissionQueue from '../components/mission/MissionQueue.vue'
 import DispatchStatus from '../components/dispatch/DispatchStatus.vue'
 import FactoryMap from '../components/map/FactoryMap.vue'
-
 import CommandPanel from '../components/command/CommandPanel.vue'
 import InventoryPanel from '../components/inventory/InventoryPanel.vue'
 import AiRecommendation from '../components/ai/AiRecommendation.vue'
 import EventLog from '../components/event/EventLog.vue'
 import OutboundQueue from '../components/outbound/OutboundQueue.vue'
+import { useTaskStore } from '../stores/taskStore'
 
 import { useAgvStore } from '../stores/agvStore'
 import { useMissionStore } from '../stores/missionStore'
@@ -165,24 +121,41 @@ const inventory = useInventoryStore()
 const rec = useRecommendationStore()
 const event = useEventStore()
 const map = useMapStore()
+const task = useTaskStore()
 
 const agv01Missions = computed(() =>
-  mission.items.filter(mission => mission.agvId === 1)
+  mission.items.filter(m => String(m.agvId) === '1')
 )
 
 const agv02Missions = computed(() =>
-  mission.items.filter(mission => mission.agvId === 2)
+  mission.items.filter(m => String(m.agvId) === '2')
 )
 
 onMounted(async () => {
-  await Promise.all([
+  await Promise.allSettled([
     agv.load(),
     mission.load(),
     inventory.load(),
     map.load(),
     event.load(),
     rec.load(),
+    task.load()
   ])
+
+    // =========================
+    // Mission Debug
+    // =========================
+    console.log('[MISSION ITEMS]', mission.items)
+
+    console.log(
+      '[AGV01 MISSIONS]',
+      agv01Missions.value
+    )
+
+    console.log(
+      '[AGV02 MISSIONS]',
+      agv02Missions.value
+    )
 
   map.setAgvs(agv.items)
 
@@ -200,7 +173,10 @@ onMounted(async () => {
     },
 
     onMessage: msg => {
+      console.log('[DASHBOARD WS MESSAGE]', msg)
+
       switch (msg.type) {
+        case 'AGV_STATUS':
         case 'AGV_STATUS_UPDATED':
           agv.update(msg.data)
           map.updateAgv(msg.data)
@@ -208,6 +184,15 @@ onMounted(async () => {
 
         case 'MISSION_QUEUE_UPDATED':
           mission.setItems(msg.data)
+          break
+
+        case 'MISSION_CREATED':
+        case 'MISSION_UPDATED':
+          mission.update(msg.data)
+          break
+
+        case 'MISSION_COMPLETED':
+          mission.remove(msg.data.missionId)
           break
 
         case 'INVENTORY_UPDATED':

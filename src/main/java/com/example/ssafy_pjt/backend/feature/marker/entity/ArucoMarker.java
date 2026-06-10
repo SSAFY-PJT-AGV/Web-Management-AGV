@@ -2,6 +2,7 @@ package com.example.ssafy_pjt.backend.feature.marker.entity;
 
 import com.example.ssafy_pjt.backend.feature.marker.enums.MarkerType;
 import com.example.ssafy_pjt.backend.feature.material.entity.Material;
+import com.example.ssafy_pjt.backend.feature.product.entity.Product;
 import com.example.ssafy_pjt.backend.feature.zone.entity.Zone;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -26,6 +27,10 @@ public class ArucoMarker {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "material_id")
     private Material material;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id")
+    private Product product;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "zone_id")

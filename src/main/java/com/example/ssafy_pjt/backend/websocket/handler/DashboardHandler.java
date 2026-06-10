@@ -1,28 +1,34 @@
 package com.example.ssafy_pjt.backend.websocket.handler;
 
-import com.example.ssafy_pjt.backend.websocket.session.DashboardSessionHandler;
+import com.example.ssafy_pjt.backend.websocket.session.DashboardSessionManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import org.springframework.web.socket.CloseStatus;
-import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
+
 
 @Component
 @RequiredArgsConstructor
-public class DashboardHandler extends TextWebSocketHandler {
+public class DashboardHandler
+        extends TextWebSocketHandler {
 
-    private final DashboardSessionHandler dashboardSessionHandler;
+
+    private final DashboardSessionManager manager;
+
 
     @Override
-    public void afterConnectionEstablished(WebSocketSession session) {
-        dashboardSessionHandler.addSession(session);
+    public void afterConnectionEstablished(
+            WebSocketSession session
+    ) {
+        manager.add(session);
     }
+
 
     @Override
     public void afterConnectionClosed(
             WebSocketSession session,
             CloseStatus status
     ) {
-        dashboardSessionHandler.removeSession(session);
+        manager.remove(session);
     }
 }
