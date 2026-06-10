@@ -1,4 +1,4 @@
-package com.example.ssafy_pjt.backend.feature.task.enums;
+package com.example.ssafy_pjt.backend.feature.product.enums;
 
 public enum ProductType {
     CAR_CONTROL_UNIT,

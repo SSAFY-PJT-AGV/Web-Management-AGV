@@ -6,7 +6,6 @@ import com.example.ssafy_pjt.backend.feature.marker.dto.FactoryMapResponse;
 import com.example.ssafy_pjt.backend.feature.marker.dto.MarkerMapItem;
 import com.example.ssafy_pjt.backend.feature.marker.repository.ArucoMarkerRepository;
 import lombok.RequiredArgsConstructor;
-import org.opencv.core.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

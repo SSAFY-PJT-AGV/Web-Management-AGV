@@ -6,12 +6,15 @@ import com.example.ssafy_pjt.backend.feature.inventory.entity.Inventory;
 import com.example.ssafy_pjt.backend.feature.inventory.enums.InventoryStatus;
 import com.example.ssafy_pjt.backend.feature.inventory.repository.InventoryRepository;
 import com.example.ssafy_pjt.backend.feature.mission.service.ReplenishmentService;
+import com.example.ssafy_pjt.backend.websocket.sender.DashboardSender;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +22,7 @@ public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
     private final ReplenishmentService replenishmentService;
+    private final DashboardSender dashboardSender;
 
     @Transactional(readOnly = true)
     public List<InventoryResponse> getInventories() {
@@ -51,6 +55,10 @@ public class InventoryService {
         inventory.setStatus(newStatus);
         inventory.setUpdatedAt(LocalDateTime.now());
 
+        InventoryResponse response = new InventoryResponse(inventory);
+
+        broadcastInventoryUpdated();
+
         if (shouldCreateReplenishmentMission(previousStatus, newStatus)) {
             replenishmentService.createReplenishmentMissions(
                     inventory.getMaterial().getMaterialCode(),
@@ -58,7 +66,15 @@ public class InventoryService {
             );
         }
 
-        return new InventoryResponse(inventory);
+        return response;
+    }
+
+    private void broadcastInventoryUpdated() {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("type", "INVENTORY_UPDATED");
+        payload.put("data", getInventories());
+
+        dashboardSender.broadcast(payload);
     }
 
     private boolean shouldCreateReplenishmentMission(

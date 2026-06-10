@@ -3,17 +3,21 @@ package com.example.ssafy_pjt.backend.feature.mission.service;
 import com.example.ssafy_pjt.backend.feature.agv.entity.Agv;
 import com.example.ssafy_pjt.backend.feature.agv.enums.AgvStatus;
 import com.example.ssafy_pjt.backend.feature.agv.repository.AgvRepository;
+import com.example.ssafy_pjt.backend.feature.mission.dto.MissionResponse;
 import com.example.ssafy_pjt.backend.feature.mission.entity.Mission;
 import com.example.ssafy_pjt.backend.feature.mission.enums.MissionStatus;
 import com.example.ssafy_pjt.backend.feature.mission.enums.MissionType;
 import com.example.ssafy_pjt.backend.feature.mission.repository.MissionRepository;
 import com.example.ssafy_pjt.backend.feature.reservation.service.ReservationService;
 import com.example.ssafy_pjt.backend.websocket.dto.AgvStatusMessage;
+import com.example.ssafy_pjt.backend.websocket.sender.DashboardSender;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +27,7 @@ public class MissionResultService {
     private final AgvRepository agvRepository;
     private final MissionDispatchService missionDispatchService;
     private final ReservationService reservationService;
+    private final DashboardSender dashboardSender;
 
     @Transactional
     public void handleAgvDone(AgvStatusMessage message) {
@@ -55,7 +60,28 @@ public class MissionResultService {
                         + agv.getAgvId()
         );
 
+        broadcastMissionCompleted(mission);
+
         missionDispatchService.dispatchAvailableAgvs();
+    }
+
+    private void broadcastMissionCompleted(Mission mission) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("missionId", mission.getMissionId());
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("type", "MISSION_COMPLETED");
+        payload.put("data", data);
+
+        dashboardSender.broadcast(payload);
+    }
+
+    private void broadcastMissionUpdated(Mission mission) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("type", "MISSION_UPDATED");
+        payload.put("data", new MissionResponse(mission));
+
+        dashboardSender.broadcast(payload);
     }
 
     private void updateReservationByCompletedMission(Mission mission, Agv agv) {

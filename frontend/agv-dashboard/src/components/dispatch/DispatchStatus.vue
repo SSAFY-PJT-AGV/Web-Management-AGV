@@ -52,7 +52,7 @@ const props = defineProps({
 })
 
 const readyAgvCount = computed(() =>
-  props.agvs.filter(agv => agv.status === 'IDLE').length
+  props.agvs.filter(agv => agv.status !== 'OFFLINE').length
 )
 
 const queuedCount = computed(() =>

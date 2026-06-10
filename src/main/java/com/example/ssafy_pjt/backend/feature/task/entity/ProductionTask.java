@@ -1,6 +1,6 @@
 package com.example.ssafy_pjt.backend.feature.task.entity;
 
-import com.example.ssafy_pjt.backend.feature.task.enums.ProductType;
+import com.example.ssafy_pjt.backend.feature.product.enums.ProductType;
 import com.example.ssafy_pjt.backend.feature.task.enums.TaskPriority;
 import com.example.ssafy_pjt.backend.feature.task.enums.TaskStatus;
 import com.example.ssafy_pjt.backend.feature.task.enums.TaskType;
