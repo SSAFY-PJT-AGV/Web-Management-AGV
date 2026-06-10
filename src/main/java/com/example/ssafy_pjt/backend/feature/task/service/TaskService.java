@@ -6,11 +6,12 @@ import com.example.ssafy_pjt.backend.feature.mission.entity.Mission;
 import com.example.ssafy_pjt.backend.feature.mission.enums.MissionStatus;
 import com.example.ssafy_pjt.backend.feature.mission.enums.MissionType;
 import com.example.ssafy_pjt.backend.feature.mission.repository.MissionRepository;
+import com.example.ssafy_pjt.backend.feature.mission.service.MissionDispatchService;
 import com.example.ssafy_pjt.backend.feature.task.dto.TaskCreateRequest;
 import com.example.ssafy_pjt.backend.feature.task.dto.TaskResponse;
 import com.example.ssafy_pjt.backend.feature.task.entity.ProductionTask;
+import com.example.ssafy_pjt.backend.feature.task.enums.TaskPriority;
 import com.example.ssafy_pjt.backend.feature.task.enums.TaskStatus;
-import com.example.ssafy_pjt.backend.feature.task.enums.TaskType;
 import com.example.ssafy_pjt.backend.feature.task.repository.ProductionTaskRepository;
 import com.example.ssafy_pjt.backend.feature.zone.entity.Zone;
 import com.example.ssafy_pjt.backend.feature.zone.repository.ZoneRepository;
@@ -29,24 +30,32 @@ public class TaskService {
     private final ProductMaterialRepository productMaterialRepository;
     private final MissionRepository missionRepository;
     private final ZoneRepository zoneRepository;
+    private final MissionDispatchService missionDispatchService;
 
     @Transactional
     public TaskResponse createTask(TaskCreateRequest request) {
-        LocalDateTime now = LocalDateTime.now();
 
-        ProductionTask task = new ProductionTask();
-        task.setProductType(request.getProductType());
-        task.setQuantity(request.getQuantity());
-        task.setTaskType(TaskType.PRODUCTION);
-        task.setPriority(request.getPriority());
-        task.setStatus(TaskStatus.RUNNING);
-        task.setCreatedAt(now);
-        task.setStartedAt(now);
-        task.setUpdatedAt(now);
+        ProductionTask task = ProductionTask.builder()
+                .taskType(request.getTaskType())
+                .productType(request.getProductType())
+                .quantity(request.getQuantity())
+                .priority(
+                        request.getPriority() != null
+                                ? request.getPriority()
+                                : TaskPriority.NORMAL
+                )
+                .status(TaskStatus.READY)
+                .build();
 
         ProductionTask savedTask = productionTaskRepository.save(task);
 
         createMissions(savedTask);
+
+        // 1. 생성된 CREATED Mission들을 AGV별 작업 큐에 전부 배정
+        missionDispatchService.assignCreatedMissionsToAgvQueues();
+
+        // 2. 각 AGV 큐의 첫 번째 Mission만 실제 실행 상태로 전환
+        missionDispatchService.dispatchAvailableAgvs();
 
         return new TaskResponse(savedTask);
     }

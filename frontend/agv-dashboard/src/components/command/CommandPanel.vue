@@ -70,6 +70,13 @@
       {{ message }}
     </p>
 
+    <p
+      v-if="error"
+      class="text-[10px] text-red-400"
+    >
+      {{ error }}
+    </p>
+
   </div>
 </template>
 
@@ -83,7 +90,7 @@ const productType = ref('CAR_CONTROL_UNIT')
 const quantity = ref(1)
 
 const message = ref('')
-
+const error = ref('')
 
 function increase() {
   quantity.value++
@@ -103,6 +110,7 @@ async function requestProduction() {
 
   try {
     await taskApi.createTask({
+      taskType: 'PRODUCTION',
       productType: productType.value,
       quantity: quantity.value,
     })

@@ -29,4 +29,15 @@ public class AgvSessionHandler {
         WebSocketSession session = sessions.get(agvId);
         return session != null && session.isOpen();
     }
+
+    public Integer findAgvIdBySession(WebSocketSession session) {
+        return sessions.entrySet()
+                .stream()
+                .filter(entry ->
+                        entry.getValue().getId().equals(session.getId())
+                )
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse(null);
+    }
 }

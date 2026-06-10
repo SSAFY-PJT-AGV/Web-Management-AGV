@@ -1,5 +1,6 @@
 package com.example.ssafy_pjt.backend.feature.agv.entity;
 
+import com.example.ssafy_pjt.backend.feature.agv.enums.AgvRole;
 import com.example.ssafy_pjt.backend.feature.agv.enums.AgvStatus;
 import com.example.ssafy_pjt.backend.feature.agv.enums.CargoType;
 import com.example.ssafy_pjt.backend.feature.marker.entity.ArucoMarker;
@@ -9,6 +10,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
 
 import java.time.LocalDateTime;
 
@@ -26,6 +29,9 @@ public class Agv {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private AgvStatus status;
+
+    @Enumerated(EnumType.STRING)
+    private AgvRole role;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "current_marker_id")

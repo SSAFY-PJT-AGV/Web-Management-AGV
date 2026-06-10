@@ -47,7 +47,7 @@ const props = defineProps({
 
 
 const displayAgvId = computed(() => {
-  return props.agv.agvId.replace('AGV', 'A')
+   `AGV${String(props.agv.agvId).padStart(2, '0')}`
 })
 
 

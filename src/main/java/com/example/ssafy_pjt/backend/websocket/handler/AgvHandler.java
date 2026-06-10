@@ -1,14 +1,20 @@
 package com.example.ssafy_pjt.backend.websocket.handler;
 
+import com.example.ssafy_pjt.backend.feature.agv.service.AgvService;
+import com.example.ssafy_pjt.backend.feature.agv.service.ChipScenarioTestService;
 import com.example.ssafy_pjt.backend.feature.marker.service.ArucoService;
-import com.example.ssafy_pjt.backend.feature.mission.enums.MissionType;
-import com.example.ssafy_pjt.backend.websocket.dto.*;
+import com.example.ssafy_pjt.backend.feature.mission.service.MissionResultService;
+import com.example.ssafy_pjt.backend.websocket.dto.AgvStatusMessage;
+import com.example.ssafy_pjt.backend.websocket.dto.ArucoResultMessage;
+import com.example.ssafy_pjt.backend.websocket.dto.ErrorMessage;
 import com.example.ssafy_pjt.backend.websocket.session.AgvSessionHandler;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import org.springframework.web.socket.*;
+import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.util.Map;
@@ -20,8 +26,10 @@ public class AgvHandler extends TextWebSocketHandler {
 
     private final ArucoService arucoService;
     private final AgvSessionHandler agvSessionHandler;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final AgvService agvService;
+    private final ChipScenarioTestService chipScenarioTestService;
+    private final MissionResultService missionResultService;
+    private final ObjectMapper objectMapper;
 
     private final Map<Integer, Long> expectedCommandIds = new ConcurrentHashMap<>();
 
@@ -35,23 +43,61 @@ public class AgvHandler extends TextWebSocketHandler {
     protected void handleTextMessage(
             WebSocketSession session,
             TextMessage message
-    ) throws Exception {
+    ) {
 
-        JsonNode root = objectMapper.readTree(message.getPayload());
+        try {
 
-        Integer agvId = root.path("agvId").asInt(0);
+            System.out.println("\n========== [WS RAW RECEIVE] ==========");
+            System.out.println("sessionId = " + session.getId());
+            System.out.println(message.getPayload());
+            System.out.println("======================================\n");
 
-        if (agvId == 0) {
-            send(session, new ErrorMessage("ERROR", null, "agvId is required"));
-            return;
+
+            JsonNode root = objectMapper.readTree(message.getPayload());
+
+
+            Integer agvId = root.path("agvId").asInt(0);
+
+            if (agvId == 0) {
+                send(session, new ErrorMessage(
+                        "ERROR",
+                        null,
+                        "필수 값 누락: agvId"
+                ));
+                return;
+            }
+
+
+            agvSessionHandler.addSession(agvId, session);
+            agvService.markConnected(agvId);
+
+
+            AgvStatusMessage statusMessage =
+                    objectMapper.treeToValue(
+                            root,
+                            AgvStatusMessage.class
+                    );
+
+
+            handleStatusReport(
+                    session,
+                    statusMessage
+            );
+
+        } catch (Exception e) {
+
+            System.out.println("[WS MESSAGE ERROR]");
+            System.out.println("reason=" + e.getMessage());
+
+            try {
+                send(session, new ErrorMessage(
+                        "ERROR",
+                        null,
+                        "메시지 처리 실패: " + e.getMessage()
+                ));
+            } catch (Exception ignored) {
+            }
         }
-
-        agvSessionHandler.addSession(agvId, session);
-
-        AgvStatusMessage statusMessage =
-                objectMapper.treeToValue(root, AgvStatusMessage.class);
-
-        handleStatusReport(session, statusMessage);
     }
 
     private void handleStatusReport(
@@ -59,78 +105,125 @@ public class AgvHandler extends TextWebSocketHandler {
             AgvStatusMessage message
     ) throws Exception {
 
-        System.out.println("AGV 상태 수신: " + message.getAgvId());
-        System.out.println("status = " + message.getStatus());
-        System.out.println("located = " + message.getLocated());
-        System.out.println("cargo = " + message.getCargo());
+        System.out.println("\n========== [AGV STATUS PARSED] ==========");
+        System.out.println("agvId       = " + message.getAgvId());
+        System.out.println("timestamp   = " + message.getTimestamp());
+        System.out.println("status      = " + message.getStatus());
+        System.out.println("event       = " + message.getEvent());
+        System.out.println("taskId      = " + message.getTaskId());
+        System.out.println("commandId   = " + message.getCommandId());
+        System.out.println("located     = " + message.getLocated());
+        System.out.println("destination = " + message.getDestination());
+        System.out.println("cargo       = " + message.getCargo());
+        System.out.println("isCW        = " + message.getIsCW());
+        System.out.println("hasImage    = " + message.getHasImage());
+        System.out.println("image       = "
+                + (message.getImage() == null
+                ? null
+                : "base64 length=" + message.getImage().length()));
+        System.out.println("========================================\n");
 
         if (Boolean.TRUE.equals(message.getHasImage())
                 && message.getImage() != null
                 && !message.getImage().isBlank()) {
 
-            ArucoResultMessage arucoResult =
-                    arucoService.detectFromBase64(
-                            message.getAgvId(),
-                            message.getImage()
-                    );
+            System.out.println("[VISION] image received. agvId="
+                    + message.getAgvId()
+                    + ", base64Length="
+                    + message.getImage().length());
 
-            if (arucoResult != null) {
-                send(session, arucoResult);
-            } else {
-                System.out.println("마커 인식 실패: agvId=" + message.getAgvId());
+            try {
+                ArucoResultMessage arucoResult =
+                        arucoService.detectFromBase64(
+                                message.getAgvId(),
+                                message.getImage()
+                        );
+
+                if (arucoResult != null) {
+                    System.out.println("[VISION RESULT] agvId="
+                            + arucoResult.getAgvId()
+                            + ", detected="
+                            + arucoResult.getDetected()
+                            + ", markerCount="
+                            + arucoResult.getMarkerCount());
+
+                    if (arucoResult.getMarkers() != null) {
+                        for (ArucoResultMessage.MarkerInfo marker : arucoResult.getMarkers()) {
+                            System.out.println("  markerId="
+                                    + marker.getMarkerId()
+                                    + ", distance="
+                                    + marker.getDistance()
+                                    + ", yaw="
+                                    + marker.getYaw()
+                                    + ", pitch="
+                                    + marker.getPitch()
+                                    + ", centered="
+                                    + marker.getCentered());
+                        }
+                    }
+
+                    send(session, arucoResult);
+                } else {
+                    System.out.println("[VISION FAIL] marker not detected. agvId="
+                            + message.getAgvId());
+
+                    send(session, new ErrorMessage(
+                            "ERROR",
+                            message.getAgvId(),
+                            "마커 인식 실패"
+                    ));
+                }
+
+            } catch (Exception e) {
+                System.out.println("[VISION ERROR] " + e.getMessage());
+
+                send(session, new ErrorMessage(
+                        "ERROR",
+                        message.getAgvId(),
+                        "이미지 처리 실패"
+                ));
             }
         }
-    }
 
-    private void handleCommandResult(
-            WebSocketSession session,
-            CommandResultMessage message
-    ) {
-
-        System.out.println("COMMAND_RESULT 수신");
-        System.out.println("AGV = " + message.getAgvId());
-        System.out.println("commandId = " + message.getCommandId());
-        System.out.println("result = " + message.getResult());
-
-        if ("SUCCESS".equals(message.getResult())) {
-
-            System.out.println(
-                    "Mission 성공 처리: commandId="
-                            + message.getCommandId()
-            );
-
-        } else if ("FAILED".equals(message.getResult())) {
-
-            System.out.println(
-                    "Mission 실패: "
-                            + message.getErrorCode()
-            );
+        if ("DONE".equals(message.getEvent())) {
+            handleDoneEvent(session, message);
         }
     }
 
-    private void sendCommandAssign(
+    private void handleDoneEvent(
             WebSocketSession session,
-            Integer agvId,
-            Long taskId,
-            Long commandId,
-            MissionType command,
-            Integer destination,
-            String cargo
+            AgvStatusMessage message
     ) throws Exception {
 
-        expectedCommandIds.put(agvId, commandId);
+        System.out.println("[AGV DONE EVENT] agvId="
+                + message.getAgvId()
+                + ", commandId="
+                + message.getCommandId());
 
-        CommandAssignMessage response = new CommandAssignMessage(
-                "COMMAND_ASSIGN",
-                agvId,
-                taskId,
-                commandId,
-                command,
-                destination,
-                cargo
-        );
+        if (message.getCommandId() == null) {
+            send(session, new ErrorMessage(
+                    "ERROR",
+                    message.getAgvId(),
+                    "DONE 이벤트에는 commandId가 필요합니다."
+            ));
+            return;
+        }
 
-        send(session, response);
+        if (chipScenarioTestService.isRunning()) {
+            chipScenarioTestService.handleAgvDone(message);
+            return;
+        }
+
+        try {
+            missionResultService.handleAgvDone(message);
+        } catch (IllegalArgumentException e) {
+            send(session, new ErrorMessage(
+                    "ERROR",
+                    message.getAgvId(),
+                    "서버가 관리 중인 Mission을 찾을 수 없습니다. commandId="
+                            + message.getCommandId()
+            ));
+        }
     }
 
     private void send(WebSocketSession session, Object response) throws Exception {
@@ -141,5 +234,25 @@ public class AgvHandler extends TextWebSocketHandler {
         session.sendMessage(
                 new TextMessage(objectMapper.writeValueAsString(response))
         );
+    }
+
+    @Override
+    public void afterConnectionClosed(
+            WebSocketSession session,
+            CloseStatus status
+    ) {
+        Integer agvId =
+                agvSessionHandler.findAgvIdBySession(session);
+
+        agvSessionHandler.removeSession(session);
+
+        if (agvId != null) {
+            agvService.markDisconnected(agvId);
+            expectedCommandIds.remove(agvId);
+
+            System.out.println("AGV 연결 종료: agvId=" + agvId);
+        } else {
+            System.out.println("AGV 연결 종료: sessionId=" + session.getId());
+        }
     }
 }
