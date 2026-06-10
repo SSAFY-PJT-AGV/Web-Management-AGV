@@ -32,6 +32,7 @@ VALUES
 INSERT IGNORE INTO agv (
     agv_id,
     status,
+    role,
     current_marker_id,
     current_mission_id,
     cargo_type,
@@ -39,8 +40,8 @@ INSERT IGNORE INTO agv (
     last_seen_at
 )
 VALUES
-    (1, 'OFFLINE', NULL, NULL, 'NONE', NULL, NULL),
-    (2, 'OFFLINE', NULL, NULL, 'NONE', NULL, NULL);
+    (1, 'OFFLINE', 'SUPPLY', NULL, NULL, 'NONE', NULL, NULL),
+    (2, 'OFFLINE', 'COLLECT', NULL, NULL, 'NONE', NULL, NULL);
 
 -- Inventory
 INSERT IGNORE INTO inventory (
@@ -70,8 +71,8 @@ INSERT IGNORE INTO aruco_marker (
     is_active
 )
 VALUES
-    (101, 'ZONE', NULL, 1, 0.0, 0.0, 'CONVEYOR_START 위치 마커', true),
-    (102, 'ZONE', NULL, 2, 1.0, 0.0, 'CONVEYOR_END 위치 마커', true),
+    (1, 'ZONE', NULL, 1, 0.0, 0.0, 'CONVEYOR_START 위치 마커', true),
+    (111, 'ZONE', NULL, 2, 1.0, 0.0, 'CONVEYOR_END 위치 마커', true),
     (103, 'ZONE', NULL, 3, 0.0, 1.0, 'AGV01_START 위치 마커', true),
     (104, 'ZONE', NULL, 4, 1.0, 1.0, 'AGV02_START 위치 마커', true),
     (105, 'ZONE', NULL, 5, 2.0, 0.0, 'FINISHED_BOX_STORAGE 위치 마커', true),
@@ -79,17 +80,20 @@ VALUES
     (107, 'ZONE', NULL, 7, 3.0, 0.0, 'INBOUND 위치 마커', true),
     (108, 'ZONE', NULL, 8, 3.0, 1.0, 'OUTBOUND 위치 마커', true),
     (109, 'ZONE', NULL, 9, 4.0, 0.5, 'CROSS_ZONE 위치 마커', true),
+    (11, 'PRODUCT_TYPE', 1, NULL, NULL, NULL, '차량 제어 장치 출고', true),
+    (12, 'PRODUCT_TYPE', 2, NULL, NULL, NULL, '카메라 센서 모듈 출고', true),
+    (13, 'PRODUCT_TYPE', 3, NULL, NULL, NULL, '배터리 팩 출고', true),
 
-    (201, 'MATERIAL_TYPE', 1, NULL, NULL, NULL, 'CHIP 자재 타입 마커', true),
+    (0, 'MATERIAL_TYPE', 1, NULL, NULL, NULL, 'CHIP 자재 타입 마커', true),
     (202, 'MATERIAL_TYPE', 2, NULL, NULL, NULL, 'SENSOR 자재 타입 마커', true),
     (203, 'MATERIAL_TYPE', 3, NULL, NULL, NULL, 'BATTERY 자재 타입 마커', true),
 
-    (301, 'MATERIAL_BOX', 1, 6, NULL, NULL, 'CHIP 보관 상자 마커', true),
-    (302, 'MATERIAL_BOX', 2, 6, NULL, NULL, 'SENSOR 보관 상자 마커', true),
-    (303, 'MATERIAL_BOX', 3, 6, NULL, NULL, 'BATTERY 보관 상자 마커', true);
+    (3, 'MATERIAL_BOX', 1, 6, NULL, NULL, 'CHIP 보관 상자 마커', true),
+    (4, 'MATERIAL_BOX', 2, 6, NULL, NULL, 'SENSOR 보관 상자 마커', true),
+    (5, 'MATERIAL_BOX', 3, 6, NULL, NULL, 'BATTERY 보관 상자 마커', true);
 
 -- System
-INSERT INTO system_state
+INSERT IGNORE INTO system_state
 (id, mode, scenario_status, active_line)
 VALUES
     (1, 'AUTO', 'READY', 'LINE_A');

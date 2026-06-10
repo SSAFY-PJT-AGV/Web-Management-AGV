@@ -51,8 +51,11 @@ public class TaskService {
 
         createMissions(savedTask);
 
-        missionDispatchService.dispatchNextMission(1);
-        missionDispatchService.dispatchNextMission(2);
+        // 1. 생성된 CREATED Mission들을 AGV별 작업 큐에 전부 배정
+        missionDispatchService.assignCreatedMissionsToAgvQueues();
+
+        // 2. 각 AGV 큐의 첫 번째 Mission만 실제 실행 상태로 전환
+        missionDispatchService.dispatchAvailableAgvs();
 
         return new TaskResponse(savedTask);
     }

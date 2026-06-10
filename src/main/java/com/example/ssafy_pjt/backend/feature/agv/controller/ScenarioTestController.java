@@ -11,13 +11,13 @@ public class ScenarioTestController {
 
     private final ChipScenarioTestService chipScenarioTestService;
 
-    @PostMapping("/chip-to-car-control-unit/start")
+    @PostMapping
     public String startChipScenario() {
         chipScenarioTestService.startScenario();
         return "CHIP → CAR_CONTROL_UNIT 시나리오 시작";
     }
 
-    @PostMapping("/chip-to-car-control-unit/reset")
+    @PostMapping("/reset")
     public String resetChipScenario() {
         chipScenarioTestService.resetScenario();
         return "CHIP → CAR_CONTROL_UNIT 시나리오 초기화";

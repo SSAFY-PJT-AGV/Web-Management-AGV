@@ -155,4 +155,8 @@ public class ChipScenarioTestService {
                 .cargo(cargo)
                 .build();
     }
+
+    public boolean isRunning() {
+        return running;
+    }
 }
