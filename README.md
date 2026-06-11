@@ -6,6 +6,9 @@
 AGV와 WebSocket 통신을 통해 상태 및 카메라 프레임을 수신하고,
 OpenCV 기반 ArUco Marker 인식을 통해 위치 보정 정보를 제공합니다.
 
+<img width="1660" height="1308" alt="image" src="https://github.com/user-attachments/assets/1f13045c-18e5-4d14-bb19-c2390957b34f" />
+
+
 ---
 
 ## 기술 스택
