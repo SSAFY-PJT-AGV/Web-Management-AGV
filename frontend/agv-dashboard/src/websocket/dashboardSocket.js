@@ -2,10 +2,7 @@ export function connectDashboardSocket(handlers) {
   let ws = null
 
   try {
-    ws = new WebSocket(
-        import.meta.env.VITE_DASHBOARD_WS ||
-        'ws://localhost:8080/ws/dashboard'
-    )
+    ws = new WebSocket(import.meta.env.VITE_WS_URL)
   } catch (e) {
     console.error('[WS CREATE ERROR]', e)
     return null
