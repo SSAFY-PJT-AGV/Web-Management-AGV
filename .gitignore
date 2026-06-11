@@ -16,10 +16,18 @@ src/main/resources/test_images/*.jpeg
 # ======================
 # Frontend Environment
 # ======================
+
+# backend/root env
 .env
-.env.example
-frontend/**/.env
-frontend/**/.env.*
+.env.*
+
+# frontend env
+frontend/.env
+frontend/.env.*
+
+# keep example files
+!.env.example
+!frontend/.env.example
 
 # 예시 파일은 허용
 !.env.example
