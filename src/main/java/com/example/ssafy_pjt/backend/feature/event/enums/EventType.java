@@ -9,5 +9,7 @@ public enum EventType {
     LOW_STOCK,
     COLLISION_WARNING,
     ZONE_RESERVED,
-    ERROR_OCCURRED
+    ERROR_OCCURRED,
+    DEMO_RESET,
+    AGV_CONNECTED
 }

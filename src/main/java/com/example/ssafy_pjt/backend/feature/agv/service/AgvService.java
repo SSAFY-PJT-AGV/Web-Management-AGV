@@ -4,6 +4,7 @@ import com.example.ssafy_pjt.backend.feature.agv.dto.AgvResponse;
 import com.example.ssafy_pjt.backend.feature.agv.entity.Agv;
 import com.example.ssafy_pjt.backend.feature.agv.enums.AgvStatus;
 import com.example.ssafy_pjt.backend.feature.agv.repository.AgvRepository;
+import com.example.ssafy_pjt.backend.websocket.dto.AgvStatusMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,12 +48,24 @@ public class AgvService {
 
         agv.setLastSeenAt(LocalDateTime.now());
     }
+    @Transactional
+    public void updateStatus(AgvStatusMessage message) {
+        Agv agv = agvRepository.findById(message.getAgvId())
+                .orElseThrow();
+
+        agv.setStatus(
+                AgvStatus.valueOf(message.getStatus())
+        );
+
+        agv.setLastSeenAt(LocalDateTime.now());
+    }
 
     @Transactional
     public void pauseAgv(Integer agvId) {
         Agv agv = findAgv(agvId);
 
         agv.setStatus(AgvStatus.WAITING);
+        agv.setLastSeenAt(LocalDateTime.now());
 
         // TODO: WebSocket으로 AGV에게 STOP 또는 PAUSE 명령 전송
     }
@@ -62,6 +75,7 @@ public class AgvService {
         Agv agv = findAgv(agvId);
 
         agv.setStatus(AgvStatus.IDLE);
+        agv.setLastSeenAt(LocalDateTime.now());
 
         // TODO: WebSocket으로 AGV에게 RESUME 명령 전송
     }
@@ -72,6 +86,7 @@ public class AgvService {
 
         agv.setCurrentMission(null);
         agv.setStatus(AgvStatus.IDLE);
+        agv.setLastSeenAt(LocalDateTime.now());
 
         // TODO: 현재 Mission 취소 처리
         // TODO: AGV에게 STOP/CANCEL 명령 전송
