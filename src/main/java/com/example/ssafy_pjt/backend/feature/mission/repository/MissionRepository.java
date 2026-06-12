@@ -47,6 +47,8 @@ public interface MissionRepository extends JpaRepository<Mission, Long> {
             List<MissionStatus> statuses
     );
 
+    long countByStatus(MissionStatus status);
+
     @Query("select max(m.sequenceOrder) from Mission m")
     Optional<Integer> findMaxSequenceOrder();
 }

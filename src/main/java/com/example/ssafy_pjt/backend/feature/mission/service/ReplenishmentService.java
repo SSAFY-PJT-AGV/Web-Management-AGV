@@ -55,6 +55,9 @@ public class ReplenishmentService {
         createMission(MissionType.DROP_EMPTY_BOX, null, 0, crossZone, outbound, sequence);
     }
 
+    private record MissionScore(Mission mission, int score) {
+    }
+
     private void createMission(
             MissionType missionType,
             Material material,

@@ -21,7 +21,7 @@ public class Recommendation {
     private Long recommendationId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "material_id", nullable = false)
+    @JoinColumn(name = "material_id")
     private Material material;
 
     @Column(name = "priority_rank", nullable = false)
