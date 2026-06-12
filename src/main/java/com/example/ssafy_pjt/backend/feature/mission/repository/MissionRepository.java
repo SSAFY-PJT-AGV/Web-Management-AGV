@@ -21,9 +21,19 @@ public interface MissionRepository extends JpaRepository<Mission, Long> {
             MissionStatus status
     );
 
+    List<Mission> findByAgv_AgvIdAndStatusInOrderBySequenceOrderAsc(
+            Integer agvId,
+            List<MissionStatus> statuses
+    );
+
     boolean existsByAgv_RoleAndMissionTypeAndStatusIn(
             AgvRole role,
             MissionType missionType,
+            List<MissionStatus> statuses
+    );
+
+    boolean existsByAgv_AgvIdAndStatusIn(
+            Integer agvId,
             List<MissionStatus> statuses
     );
 

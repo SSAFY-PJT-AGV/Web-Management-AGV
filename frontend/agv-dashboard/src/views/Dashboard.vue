@@ -1,9 +1,17 @@
 <template>
-  <main class="grid-background h-screen overflow-hidden p-2">
-    <div class="h-full flex flex-col gap-2">
-      <HeaderStatus :connected="connected" />
+  <main class="hmi-root grid-background p-2">
+    <div class="relative z-50 flex items-center gap-2 overflow-visible">
+      <div class="flex-1">
+        <HeaderStatus :connected="connected" />
+      </div>
 
-      <section class="grid grid-cols-[29%_44%_25%] gap-2 flex-1 min-h-0 overflow-hidden">
+      <AdminMenu
+        :agvs="agv.items"
+        @refresh="refreshDashboard"
+      />
+    </div>
+
+      <section class="hmi-layout">
         <aside class="flex flex-col gap-3 min-h-0">
           <PanelFrame title="AGV STATUS" class="shrink-0">
             <div class="space-y-3">
@@ -22,13 +30,19 @@
           <div class="grid grid-cols-2 gap-3 flex-1 min-h-0">
             <PanelFrame title="AGV01 MISSION QUEUE" class="min-h-0 overflow-hidden">
               <div class="h-full min-h-0 overflow-y-auto pr-1">
-                <MissionQueue :items="agv01Missions" />
+                <MissionQueue
+                  :items="agv01Missions"
+                  :agv-status="agv01Status"
+                />
               </div>
             </PanelFrame>
 
             <PanelFrame title="AGV02 MISSION QUEUE" class="min-h-0 overflow-hidden">
               <div class="h-full min-h-0 overflow-y-auto pr-1">
-                <MissionQueue :items="agv02Missions" />
+                <MissionQueue
+                  :items="agv02Missions"
+                  :agv-status="agv02Status"
+                />
               </div>
             </PanelFrame>
           </div>
@@ -65,7 +79,7 @@
             <CommandPanel />
           </PanelFrame>
 
-          <PanelFrame title="INVENTORY" class="flex-[1.1] min-h-0 overflow-hidden">
+          <PanelFrame title="INVENTORY" class="flex-[2] min-h-0 overflow-hidden">
             <InventoryPanel :items="inventory.items" />
           </PanelFrame>
 
@@ -77,12 +91,11 @@
 
           <PanelFrame title="OUTBOUND QUEUE" class="flex-1 min-h-0 overflow-hidden">
             <div class="h-full min-h-0 overflow-y-auto pr-1">
-              <OutboundQueue :items="task.items" />
+              <OutboundQueue :items="activeTasks" />
             </div>
           </PanelFrame>
         </aside>
       </section>
-    </div>
   </main>
 </template>
 
@@ -90,6 +103,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import HeaderStatus from '../components/layout/HeaderStatus.vue'
+import AdminMenu from '../components/admin/AdminMenu.vue'
 import PanelFrame from '../components/layout/PanelFrame.vue'
 import AgvStatusCard from '../components/agv/AgvStatusCard.vue'
 import AgvControl from '../components/agv/AgvControl.vue'
@@ -111,6 +125,7 @@ import { useEventStore } from '../stores/eventStore'
 import { useMapStore } from '../stores/mapStore'
 
 import { connectDashboardSocket } from '../websocket/dashboardSocket'
+import { connectFakeAgv } from '../websocket/fakeAgvSocket'
 
 const connected = ref(false)
 let dashboardWs = null
@@ -123,15 +138,48 @@ const event = useEventStore()
 const map = useMapStore()
 const task = useTaskStore()
 
+const activeMissionStatuses = [
+    'ASSIGNED',
+    'CREATED',
+    'IN_PROGRESS',
+    'FAILED'
+]
+
 const agv01Missions = computed(() =>
-  mission.items.filter(m => String(m.agvId) === '1')
+  mission.items.filter(m =>
+    String(m.agvId) === '1' &&
+    activeMissionStatuses.includes(m.status)
+  )
 )
 
 const agv02Missions = computed(() =>
-  mission.items.filter(m => String(m.agvId) === '2')
+  mission.items.filter(m =>
+    String(m.agvId) === '2' &&
+    activeMissionStatuses.includes(m.status)
+  )
 )
 
-onMounted(async () => {
+const agv01Status = computed(() =>
+  agv.items.find(a => String(a.agvId) === '1')?.status ?? 'OFFLINE'
+)
+
+const agv02Status = computed(() =>
+  agv.items.find(a => String(a.agvId) === '2')?.status ?? 'OFFLINE'
+)
+
+const activeTaskStatuses = [
+  'READY',
+  'RUNNING',
+  'IN_PROGRESS'
+]
+
+const activeTasks = computed(() =>
+  task.items.filter(t =>
+    activeTaskStatuses.includes(t.status)
+  )
+)
+
+async function refreshDashboard() {
   await Promise.allSettled([
     agv.load(),
     mission.load(),
@@ -142,22 +190,32 @@ onMounted(async () => {
     task.load()
   ])
 
-    // =========================
-    // Mission Debug
-    // =========================
-    console.log('[MISSION ITEMS]', mission.items)
-
-    console.log(
-      '[AGV01 MISSIONS]',
-      agv01Missions.value
-    )
-
-    console.log(
-      '[AGV02 MISSIONS]',
-      agv02Missions.value
-    )
-
   map.setAgvs(agv.items)
+
+  console.log('[MISSION ITEMS]', mission.items)
+
+  console.log(
+    '[AGV01 MISSIONS]',
+    agv01Missions.value
+  )
+
+  console.log(
+    '[AGV02 MISSIONS]',
+    agv02Missions.value
+  )
+}
+
+onMounted(async () => {
+
+  await refreshDashboard()
+
+  if (localStorage.getItem('fakeAgv1') === 'true') {
+      connectFakeAgv(1)
+    }
+
+    if (localStorage.getItem('fakeAgv2') === 'true') {
+      connectFakeAgv(2)
+    }
 
   dashboardWs = connectDashboardSocket({
     onOpen: () => {

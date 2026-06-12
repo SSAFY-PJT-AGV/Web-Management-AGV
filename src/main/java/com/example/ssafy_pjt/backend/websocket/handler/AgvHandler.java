@@ -70,6 +70,8 @@ public class AgvHandler extends TextWebSocketHandler {
 
             agvSessionHandler.addSession(agvId, session);
             agvService.markConnected(agvId);
+            missionDispatchService.assignCreatedMissionsToAgvQueues();
+            missionDispatchService.dispatchNextMission(agvId);
 
             AgvStatusMessage statusMessage =
                     objectMapper.treeToValue(
@@ -103,6 +105,10 @@ public class AgvHandler extends TextWebSocketHandler {
     ) throws Exception {
 
         printStatusLog(message);
+
+        agvService.updateStatus(message);
+        missionDispatchService.assignCreatedMissionsToAgvQueues();
+        missionDispatchService.dispatchNextMission(message.getAgvId());
 
         broadcastAgvStatus(message);
 

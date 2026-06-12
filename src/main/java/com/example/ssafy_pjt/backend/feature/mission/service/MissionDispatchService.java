@@ -40,13 +40,34 @@ public class MissionDispatchService {
                 missionRepository.findByStatusOrderByCreatedAtAsc(MissionStatus.CREATED);
 
         for (Mission mission : createdMissions) {
-            Agv selectedAgv = selectBestAgvForMission(mission);
+            if (mission.getAgv() != null) {
+                continue;
+            }
+
+            Agv selectedAgv = selectBestAgvForMissionOrNull(mission);
+
+            if (selectedAgv == null) {
+                continue;
+            }
 
             mission.setAgv(selectedAgv);
-            mission.setStatus(MissionStatus.ASSIGNED);
         }
 
         dashboardBroadcastService.missionRefresh();
+    }
+
+    private Agv selectBestAgvForMissionOrNull(Mission mission) {
+        AgvRole requiredRole = getRequiredRole(mission);
+
+        List<Agv> candidates = findCandidateAgvs(requiredRole);
+
+        if (candidates.isEmpty()) {
+            return null;
+        }
+
+        return candidates.stream()
+                .min(Comparator.comparingLong(this::getQueueSize))
+                .orElse(null);
     }
 
     @Transactional
@@ -68,13 +89,20 @@ public class MissionDispatchService {
             return null;
         }
 
-        Mission mission = findNextAssignedMissionForAgv(agvId);
+        if (hasExecutingMission(agvId)) {
+            System.out.println("[DISPATCH SKIP] AGV already has executing mission. agvId=" + agvId);
+            return null;
+        }
+
+        Mission mission = findNextDispatchableMissionForAgv(agvId);
 
         if (mission == null) {
             return null;
         }
 
         if (shouldWait(mission)) {
+            mission.setStatus(MissionStatus.ASSIGNED);
+
             agv.setStatus(AgvStatus.WAITING);
             agv.setCurrentMission(mission);
 
@@ -88,7 +116,7 @@ public class MissionDispatchService {
             reservationService.reserveCrossZone(agv, mission);
         }
 
-        mission.setStatus(MissionStatus.IN_PROGRESS);
+        mission.setStatus(MissionStatus.ASSIGNED);
 
         agv.setStatus(AgvStatus.ASSIGNED);
         agv.setCurrentMission(mission);
@@ -96,7 +124,7 @@ public class MissionDispatchService {
         boolean sent = sendCommandAssign(agvId, mission);
 
         if (!sent) {
-            mission.setStatus(MissionStatus.ASSIGNED);
+            mission.setStatus(MissionStatus.CREATED);
             agv.setStatus(AgvStatus.IDLE);
             agv.setCurrentMission(null);
 
@@ -106,10 +134,22 @@ public class MissionDispatchService {
             return null;
         }
 
+        mission.setStatus(MissionStatus.IN_PROGRESS);
+
         dashboardBroadcastService.missionRefresh();
         dashboardBroadcastService.mapRefresh();
 
         return mission;
+    }
+
+    private boolean hasExecutingMission(Integer agvId) {
+        return missionRepository.existsByAgv_AgvIdAndStatusIn(
+                agvId,
+                List.of(
+                        MissionStatus.ASSIGNED,
+                        MissionStatus.IN_PROGRESS
+                )
+        );
     }
 
     private boolean isDispatchable(Agv agv) {
@@ -122,36 +162,36 @@ public class MissionDispatchService {
                 || agv.getStatus() == AgvStatus.WAITING;
     }
 
-    private Agv selectBestAgvForMission(Mission mission) {
-        AgvRole requiredRole = getRequiredRole(mission);
+    private List<Agv> findCandidateAgvs(AgvRole requiredRole) {
+        List<Agv> candidates;
 
-        List<Agv> candidates = findCandidateAgvs(requiredRole);
-
-        if (candidates.isEmpty()) {
-            throw new IllegalStateException("배정 가능한 AGV가 없습니다. requiredRole=" + requiredRole);
+        if (requiredRole == AgvRole.SUPPLY) {
+            candidates = agvRepository.findByRoleIn(
+                    List.of(AgvRole.SUPPLY, AgvRole.BOTH)
+            );
+        } else if (requiredRole == AgvRole.COLLECT) {
+            candidates = agvRepository.findByRoleIn(
+                    List.of(AgvRole.COLLECT, AgvRole.BOTH)
+            );
+        } else {
+            candidates = agvRepository.findByRoleIn(
+                    List.of(AgvRole.BOTH)
+            );
         }
 
         return candidates.stream()
-                .min(Comparator.comparingLong(this::getQueueSize))
-                .orElseThrow();
-    }
-
-    private List<Agv> findCandidateAgvs(AgvRole requiredRole) {
-        if (requiredRole == AgvRole.SUPPLY) {
-            return agvRepository.findByRoleIn(List.of(AgvRole.SUPPLY, AgvRole.BOTH));
-        }
-
-        if (requiredRole == AgvRole.COLLECT) {
-            return agvRepository.findByRoleIn(List.of(AgvRole.COLLECT, AgvRole.BOTH));
-        }
-
-        return agvRepository.findByRoleIn(List.of(AgvRole.BOTH));
+                .filter(agv -> agvSessionHandler.isConnected(agv.getAgvId()))
+                .toList();
     }
 
     private long getQueueSize(Agv agv) {
         return missionRepository.countByAgv_AgvIdAndStatusIn(
                 agv.getAgvId(),
-                List.of(MissionStatus.ASSIGNED, MissionStatus.IN_PROGRESS)
+                List.of(
+                        MissionStatus.CREATED,
+                        MissionStatus.ASSIGNED,
+                        MissionStatus.IN_PROGRESS
+                )
         );
     }
 
@@ -182,12 +222,12 @@ public class MissionDispatchService {
         };
     }
 
-    private Mission findNextAssignedMissionForAgv(Integer agvId) {
+    private Mission findNextDispatchableMissionForAgv(Integer agvId) {
         Agv agv = getAgv(agvId);
 
-        return missionRepository.findByAgv_AgvIdAndStatusOrderBySequenceOrderAsc(
+        return missionRepository.findByAgv_AgvIdAndStatusInOrderBySequenceOrderAsc(
                         agvId,
-                        MissionStatus.ASSIGNED
+                        List.of(MissionStatus.CREATED, MissionStatus.ASSIGNED)
                 )
                 .stream()
                 .max(Comparator

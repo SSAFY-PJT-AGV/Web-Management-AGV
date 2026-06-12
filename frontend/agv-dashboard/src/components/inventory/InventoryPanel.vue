@@ -1,15 +1,15 @@
 <template>
-  <div class="space-y-2">
+  <div class="flex h-full min-h-0 flex-col gap-1.5">
 
     <article
       v-for="item in normalizedItems"
       :key="item.material"
-      class="queue-item p-3"
+      class="queue-item min-h-0 flex-1 px-3 py-2"
     >
       <div class="flex items-center justify-between">
 
         <div>
-          <div class="font-['Barlow_Condensed'] text-[1.15rem] font-bold tracking-[0.14em] text-[var(--text)]">
+          <div class="font-['Barlow_Condensed'] text-[1rem] font-bold tracking-[0.14em] text-[var(--text)]">
             {{ item.material }}
           </div>
 
@@ -36,7 +36,7 @@
 
       </div>
 
-      <div class="mt-3 h-1.5 bg-[#111827]">
+      <div class="mt-2 h-1.5 bg-[#111827]">
         <div
           class="h-full transition-all duration-300"
           :class="barClass(item.status)"
@@ -72,7 +72,7 @@ const materialLabelMap = {
 }
 
 const normalizedItems = computed(() => {
-  return props.items.slice(0, 4).map(item => {
+  return props.items.slice(0, 3).map(item => {
     const material =
       item.material ||
       item.materialCode ||

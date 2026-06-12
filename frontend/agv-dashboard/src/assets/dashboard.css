@@ -178,3 +178,59 @@ body {
         opacity: 0.25;
     }
 }
+
+
+
+.hmi-root {
+    height: 100vh;
+    overflow: hidden;
+}
+
+.hmi-layout {
+    height: calc(100vh - 76px);
+    display: grid;
+    grid-template-columns: 29% 44% 25%;
+    gap: 0.5rem;
+    overflow: hidden;
+}
+
+.hmi-col {
+    min-height: 0;
+    overflow: hidden;
+}
+
+.hmi-scroll {
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+@media (max-height: 820px) {
+    .hmi-root {
+        font-size: 0.88rem;
+    }
+
+    .hmi-layout {
+        height: calc(100vh - 64px);
+        gap: 0.4rem;
+    }
+
+    .panel-title {
+        font-size: 0.64rem;
+    }
+}
+
+@media (max-height: 720px) {
+    .hmi-root {
+        font-size: 0.78rem;
+    }
+
+    .hmi-layout {
+        height: calc(100vh - 56px);
+        gap: 0.3rem;
+    }
+
+    .panel-title {
+        font-size: 0.58rem;
+    }
+}

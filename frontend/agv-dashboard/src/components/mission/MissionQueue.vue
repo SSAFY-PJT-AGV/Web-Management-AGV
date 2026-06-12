@@ -27,16 +27,16 @@
            {{ index + 1 }}
          </td>
 
-          <td class="truncate px-2 py-1.5 text-[0.78rem] tracking-[0.04em] text-[var(--text)]">
-            {{ missionLabel(item.missionType) }}
-          </td>
+         <td class="truncate px-2 py-1.5 text-[0.78rem] tracking-[0.04em] text-[var(--text)]">
+           {{ missionLabel(item.missionType) }}
+         </td>
 
-          <td
-            class="px-2 py-1.5 text-[0.75rem] font-bold tracking-[0.06em]"
-            :class="statusClass(item.status)"
-          >
-            {{ item.status }}
-          </td>
+         <td
+           class="px-2 py-1.5 text-[0.75rem] font-bold tracking-[0.06em]"
+           :class="statusClass(missionDisplayStatus(item))"
+         >
+             {{ missionDisplayStatus(item) }}
+         </td>
         </tr>
 
         <tr v-if="!items || items.length === 0">
@@ -50,17 +50,46 @@
 </template>
 
 <script setup>
-defineProps({
+const props = defineProps({
   items: {
     type: Array,
     default: () => []
+  },
+  agvStatus: {
+    type: String,
+    default: 'OFFLINE'
   }
 })
 
-function statusClass(status) {
-  if (status === 'IN_PROGRESS') return 'text-[var(--accent)]'
-  if (status === 'CREATED' || status === 'ASSIGNED' || status === 'QUEUED') return 'text-[var(--amber)]'
-  if (status === 'FAILED') return 'text-[var(--red)]'
+function missionDisplayStatus(mission) {
+  if (props.agvStatus === 'OFFLINE' && mission.status === 'IN_PROGRESS') {
+    return 'WAITING'
+  }
+
+  if (mission.status === 'CREATED' && mission.agvId) {
+    return 'QUEUED'
+  }
+
+  return mission.status
+}
+
+function statusClass(displayStatus) {
+  if (displayStatus === 'IN_PROGRESS') {
+    return 'text-[var(--accent)]'
+  }
+
+  if (
+    displayStatus === 'QUEUED' ||
+    displayStatus === 'ASSIGNED' ||
+    displayStatus === 'WAITING'
+  ) {
+    return 'text-[var(--amber)]'
+  }
+
+  if (displayStatus === 'FAILED') {
+    return 'text-[var(--red)]'
+  }
+
   return 'text-[var(--muted)]'
 }
 
