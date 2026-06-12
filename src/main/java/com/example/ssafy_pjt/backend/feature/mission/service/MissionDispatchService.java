@@ -225,21 +225,50 @@ public class MissionDispatchService {
     private Mission findNextDispatchableMissionForAgv(Integer agvId) {
         Agv agv = getAgv(agvId);
 
-        return missionRepository.findByAgv_AgvIdAndStatusInOrderBySequenceOrderAsc(
+        List<Mission> missions =
+                missionRepository.findByAgv_AgvIdAndStatusInOrderBySequenceOrderAsc(
                         agvId,
                         List.of(MissionStatus.CREATED, MissionStatus.ASSIGNED)
+                );
+
+        return missions.stream()
+                .filter(mission -> isHeadOfQueue(mission, missions))
+                .map(mission -> {
+                    int score = missionPriorityService.calculateScore(mission, agv);
+
+                    System.out.println(
+                            "[SCHEDULER SCORE] agvId=" + agvId +
+                                    ", missionId=" + mission.getMissionId() +
+                                    ", type=" + mission.getMissionType() +
+                                    ", sequence=" + mission.getSequenceOrder() +
+                                    ", score=" + score
+                    );
+
+                    return new MissionScore(mission, score);
+                })
+                .sorted(Comparator
+                        .comparingInt(MissionScore::score)
+                        .reversed()
+                        .thenComparing(ms -> ms.mission().getSequenceOrder())
+                        .thenComparing(ms -> ms.mission().getCreatedAt())
                 )
-                .stream()
-                .max(Comparator
-                        .comparingInt((Mission mission) ->
-                                missionPriorityService.calculateScore(mission, agv)
-                        )
-                        .thenComparing(
-                                Mission::getSequenceOrder,
-                                Comparator.reverseOrder()
-                        )
-                )
+                .map(MissionScore::mission)
+                .findFirst()
                 .orElse(null);
+    }
+
+    private boolean isHeadOfQueue(Mission mission, List<Mission> missions) {
+        return missions.stream()
+                .filter(other -> other.getSequenceOrder() < mission.getSequenceOrder())
+                .noneMatch(other -> isSameFlow(mission, other));
+    }
+
+    private boolean isSameFlow(Mission a, Mission b) {
+        if (a.getTask() != null && b.getTask() != null) {
+            return a.getTask().getTaskId().equals(b.getTask().getTaskId());
+        }
+
+        return a.getTask() == null && b.getTask() == null;
     }
 
     private boolean shouldWait(Mission mission) {
@@ -287,5 +316,11 @@ public class MissionDispatchService {
     private Agv getAgv(Integer agvId) {
         return agvRepository.findById(agvId)
                 .orElseThrow(() -> new IllegalArgumentException("AGV " + agvId + "번이 존재하지 않습니다."));
+    }
+
+    private record MissionScore(
+            Mission mission,
+            int score
+    ) {
     }
 }
