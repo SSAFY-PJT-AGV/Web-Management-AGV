@@ -6,7 +6,7 @@ public final class DashboardEventType {
     }
 
     public static final String AGV_STATUS = "AGV_STATUS";
-
+    public static final String AGV_REFRESH = "AGV_REFRESH";
     public static final String TASK_REFRESH = "TASK_REFRESH";
     public static final String MISSION_REFRESH = "MISSION_REFRESH";
     public static final String INVENTORY_REFRESH = "INVENTORY_REFRESH";

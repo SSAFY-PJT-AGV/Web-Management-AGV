@@ -105,13 +105,15 @@ public class TaskService {
         Zone finishedBoxStorage = zoneRepository.findByZoneName("FINISHED_BOX_STORAGE")
                 .orElseThrow(() -> new IllegalArgumentException("완제품 상자 보관 구역이 없습니다."));
 
+        Zone outbound = zoneRepository.findByZoneName("OUTBOUND")
+                .orElseThrow(() -> new IllegalArgumentException("출고 구역이 없습니다."));
+
         int sequence = 1;
 
         for (ProductMaterial productMaterial : productMaterials) {
             int requiredQuantity =
                     productMaterial.getQuantityPerUnit() * task.getQuantity();
 
-            // AGV1: 자재 보관 상자에서 부품 상자 픽업
             createMission(
                     task,
                     MissionType.PICK_FROM_STORAGE,
@@ -119,11 +121,10 @@ public class TaskService {
                     product,
                     requiredQuantity,
                     materialStorage,
-                    null,
+                    materialStorage,
                     sequence++
             );
 
-            // AGV1: 컨베이어 진입점에 부품 투입
             createMission(
                     task,
                     MissionType.DROP_TO_CONVEYOR,
@@ -135,7 +136,6 @@ public class TaskService {
                     sequence++
             );
 
-            // AGV2: 컨베이어 출고점에서 완제품/부품 픽업
             createMission(
                     task,
                     MissionType.PICK_FROM_CONVEYOR,
@@ -143,11 +143,10 @@ public class TaskService {
                     product,
                     requiredQuantity,
                     conveyorEnd,
-                    null,
+                    conveyorEnd,
                     sequence++
             );
 
-            // AGV2: 완제품 상자 보관 구역에 제품별 상자 보관
             createMission(
                     task,
                     MissionType.DROP_TO_FINISHED_BOX_STORAGE,
@@ -159,6 +158,50 @@ public class TaskService {
                     sequence++
             );
         }
+
+        createMission(
+                task,
+                MissionType.PICK_FROM_INBOUND,
+                null,
+                product,
+                task.getQuantity(),
+                finishedBoxStorage,
+                finishedBoxStorage,
+                sequence++
+        );
+
+        createMission(
+                task,
+                MissionType.DROP_TO_OUTBOUND,
+                null,
+                product,
+                task.getQuantity(),
+                finishedBoxStorage,
+                outbound,
+                sequence++
+        );
+
+        createMission(
+                task,
+                MissionType.PICK_EMPTY_BOX,
+                null,
+                product,
+                task.getQuantity(),
+                outbound,
+                outbound,
+                sequence++
+        );
+
+        createMission(
+                task,
+                MissionType.DROP_EMPTY_BOX,
+                null,
+                product,
+                task.getQuantity(),
+                outbound,
+                finishedBoxStorage,
+                sequence++
+        );
     }
 
     private void createMission(
@@ -178,7 +221,9 @@ public class TaskService {
         mission.setMissionType(missionType);
 
         // 자재 기반 Mission 목적지 계산용
-        mission.setMaterial(productMaterial.getMaterial());
+        if (productMaterial != null) {
+            mission.setMaterial(productMaterial.getMaterial());
+        }
 
         // 완제품 보관 Mission marker 11/12/13 계산용
         mission.setProduct(product);

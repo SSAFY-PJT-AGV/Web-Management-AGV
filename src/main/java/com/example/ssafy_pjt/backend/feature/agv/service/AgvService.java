@@ -3,7 +3,10 @@ package com.example.ssafy_pjt.backend.feature.agv.service;
 import com.example.ssafy_pjt.backend.feature.agv.dto.AgvResponse;
 import com.example.ssafy_pjt.backend.feature.agv.entity.Agv;
 import com.example.ssafy_pjt.backend.feature.agv.enums.AgvStatus;
+import com.example.ssafy_pjt.backend.feature.agv.enums.CargoType;
 import com.example.ssafy_pjt.backend.feature.agv.repository.AgvRepository;
+import com.example.ssafy_pjt.backend.feature.marker.repository.ArucoMarkerRepository;
+import com.example.ssafy_pjt.backend.feature.material.repository.MaterialRepository;
 import com.example.ssafy_pjt.backend.websocket.dto.AgvStatusMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,10 +20,12 @@ import java.util.List;
 public class AgvService {
 
     private final AgvRepository agvRepository;
+    private final ArucoMarkerRepository arucoMarkerRepository;
+    private final MaterialRepository materialRepository;
 
     @Transactional(readOnly = true)
     public List<AgvResponse> getAgvs() {
-        return agvRepository.findAll()
+        return agvRepository.findAllWithDisplayInfo()
                 .stream()
                 .map(AgvResponse::new)
                 .toList();
@@ -48,16 +53,35 @@ public class AgvService {
 
         agv.setLastSeenAt(LocalDateTime.now());
     }
+
     @Transactional
     public void updateStatus(AgvStatusMessage message) {
         Agv agv = agvRepository.findById(message.getAgvId())
                 .orElseThrow();
 
-        agv.setStatus(
-                AgvStatus.valueOf(message.getStatus())
-        );
-
+        agv.setStatus(AgvStatus.valueOf(message.getStatus()));
         agv.setLastSeenAt(LocalDateTime.now());
+
+        if (message.getLocated() != null) {
+            arucoMarkerRepository.findById(message.getLocated())
+                    .ifPresent(agv::setCurrentMarker);
+        }
+
+        String cargo = message.getCargo();
+
+        if (cargo == null || cargo.isBlank()
+                || "EMPTY".equals(cargo)
+                || "NONE".equals(cargo)) {
+            agv.setCargoType(CargoType.NONE);
+            agv.setCargoMaterial(null);
+            return;
+        }
+
+        materialRepository.findByMaterialCode(cargo)
+                .ifPresent(material -> {
+                    agv.setCargoType(CargoType.MATERIAL);
+                    agv.setCargoMaterial(material);
+                });
     }
 
     @Transactional

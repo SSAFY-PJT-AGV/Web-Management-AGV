@@ -5,13 +5,25 @@ function normalizeAgv(agv) {
     return {
         ...agv,
 
-        // 백엔드 필드
-        currentMarkerId: agv.currentMarkerId ?? agv.currentMarker ?? agv.located ?? null,
+        currentMarkerId:
+            agv.currentMarkerId ??
+            agv.currentMarker ??
+            agv.located ??
+            null,
 
-        // 프론트 기존 컴포넌트 호환용
-        currentMarker: agv.currentMarkerId ?? agv.currentMarker ?? agv.located ?? null,
+        currentMarker:
+            agv.currentMarkerId ??
+            agv.currentMarker ??
+            agv.located ??
+            null,
 
-        cargo: agv.cargoMaterialCode ?? agv.cargoType ?? 'NONE',
+        cargo:
+            agv.cargoMaterialCode ??
+            agv.cargoType ??
+            'NONE',
+
+        target:
+            agv.targetZoneName ?? '-',
     }
 }
 

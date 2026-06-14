@@ -235,9 +235,10 @@ onMounted(async () => {
 
       switch (msg.type) {
         case 'AGV_STATUS':
-        case 'AGV_STATUS_UPDATED':
           agv.update(msg.data)
           map.updateAgv(msg.data)
+
+          agv.load()
           break
 
         case 'TASK_REFRESH':
@@ -247,14 +248,18 @@ onMounted(async () => {
           break
 
         case 'MISSION_REFRESH':
-          mission.load()
-            .then(() => {
-              console.log('[MISSION AFTER LOAD]', mission.items)
-              console.log('[AGV01 AFTER LOAD]', agv01Missions.value)
-              console.log('[AGV02 AFTER LOAD]', agv02Missions.value)
-            })
-            .catch(console.error)
+          Promise.allSettled([
+            mission.load(),
+            agv.load()
+          ])
           break
+
+        case 'MAP_REFRESH':
+          Promise.allSettled([
+            map.load(),
+            agv.load()
+          ])
+          brea
 
         case 'INVENTORY_REFRESH':
           inventory.load().catch(console.error)
@@ -266,10 +271,6 @@ onMounted(async () => {
 
         case 'AI_REFRESH':
           rec.load().catch(console.error)
-          break
-
-        case 'MAP_REFRESH':
-          map.load().catch(console.error)
           break
 
         default:

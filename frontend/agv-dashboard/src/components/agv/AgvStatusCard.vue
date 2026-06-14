@@ -27,7 +27,7 @@
         <div class="grid grid-cols-[72px_1fr] gap-2">
           <span class="text-[0.65rem] tracking-[0.14em] text-[var(--muted)]">MISSION</span>
           <span class="text-[0.8rem] text-[var(--accent)]">
-            {{ agv.currentJob || '—' }}
+             {{ agv.currentMissionType || '—' }}
           </span>
         </div>
 
@@ -39,9 +39,9 @@
         </div>
 
         <div class="grid grid-cols-[72px_1fr] gap-2">
-          <span class="text-[0.65rem] tracking-[0.14em] text-[var(--muted)]">MARKER</span>
+          <span class="text-[0.65rem] tracking-[0.14em] text-[var(--muted)]">TARGET</span>
           <span class="text-[0.8rem] text-[var(--text)]">
-            {{ agv.marker || '—' }}
+            {{ agv.target || '—' }}
           </span>
         </div>
       </div>
