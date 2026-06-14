@@ -11,8 +11,14 @@ public class RecommendationScheduler {
 
     private final RecommendationService recommendationService;
 
-    @Scheduled(fixedDelay = 10000)
-    public void run() {
-        recommendationService.analyze();
+    @Scheduled(fixedDelay = 5000)
+    public void ruleCheck() {
+        recommendationService.analyzeRule();
+    }
+
+
+    @Scheduled(fixedDelay = 15000)
+    public void aiCheck() {
+        recommendationService.analyzeAi();
     }
 }

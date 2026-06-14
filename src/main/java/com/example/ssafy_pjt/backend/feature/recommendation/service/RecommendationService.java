@@ -3,8 +3,12 @@ package com.example.ssafy_pjt.backend.feature.recommendation.service;
 import com.example.ssafy_pjt.backend.feature.agv.repository.AgvRepository;
 import com.example.ssafy_pjt.backend.feature.inventory.entity.Inventory;
 import com.example.ssafy_pjt.backend.feature.inventory.repository.InventoryRepository;
+import com.example.ssafy_pjt.backend.feature.material.entity.Material;
+import com.example.ssafy_pjt.backend.feature.material.repository.MaterialRepository;
 import com.example.ssafy_pjt.backend.feature.mission.enums.MissionStatus;
 import com.example.ssafy_pjt.backend.feature.mission.repository.MissionRepository;
+import com.example.ssafy_pjt.backend.feature.recommendation.ai.GmsAiClient;
+import com.example.ssafy_pjt.backend.feature.recommendation.dto.AiRecommendationResult;
 import com.example.ssafy_pjt.backend.feature.recommendation.dto.RecommendationResponse;
 import com.example.ssafy_pjt.backend.feature.recommendation.entity.Recommendation;
 import com.example.ssafy_pjt.backend.feature.recommendation.repository.RecommendationRepository;
@@ -26,10 +30,12 @@ public class RecommendationService {
     private final AgvRepository agvRepository;
     private final DashboardBroadcastService dashboardBroadcastService;
     private final FactoryStateSummaryService factoryStateSummaryService;
+    private final MaterialRepository materialRepository;
+    private final GmsAiClient gmsAiClient;
 
     @Transactional(readOnly = true)
     public List<RecommendationResponse> getRecommendations() {
-        return recommendationRepository.findAllByOrderByPriorityRankAsc()
+        return recommendationRepository.findTop5ByOrderByCreatedAtDesc()
                 .stream()
                 .map(r -> new RecommendationResponse(
                         getTitle(r),
@@ -39,6 +45,10 @@ public class RecommendationService {
     }
 
     private String getTitle(Recommendation r) {
+
+        if (r.getPriorityRank() != null && r.getPriorityRank() == 99) {
+            return "AI ANALYSIS";
+        }
 
         if (r.getMaterial() != null) {
             return "INVENTORY WARNING";
@@ -56,18 +66,30 @@ public class RecommendationService {
     }
 
     @Transactional
-    public void analyze() {
-
-        System.out.println(factoryStateSummaryService.buildSummary());
-
-        recommendationRepository.deleteAll();
-
+    public void analyzeRule() {
         int rank = 1;
 
         rank = analyzeInventory(rank);
         rank = analyzeMissionQueue(rank);
         rank = analyzeAgvLoad(rank);
         analyzeAgvStatus(rank);
+
+        dashboardBroadcastService.aiRefresh();
+    }
+
+    @Transactional
+    public void analyzeAi() {
+
+        String factoryState =
+                factoryStateSummaryService.buildSummary();
+
+        String aiResult =
+                gmsAiClient.analyze(factoryState);
+
+        System.out.println("[AI RESULT]");
+        System.out.println(aiResult);
+
+        saveAiRecommendation(aiResult);
 
         dashboardBroadcastService.aiRefresh();
     }
@@ -177,7 +199,87 @@ public class RecommendationService {
         return rank;
     }
 
+    private void saveAiRecommendation(String aiResult) {
+        AiRecommendationResult parsed = parseAiResult(aiResult);
+
+        Recommendation r = new Recommendation();
+
+        r.setMaterial(resolveMaterialOrNull(parsed.targetKey()));
+        r.setPriorityRank(99);
+        r.setPriorityScore(parsed.priorityScore());
+        r.setReason(parsed.message());
+        r.setCreatedAt(LocalDateTime.now());
+
+        recommendationRepository.save(r);
+    }
+
+    private Material resolveMaterialOrNull(String targetKey) {
+        if (targetKey == null || targetKey.isBlank()) {
+            return null;
+        }
+
+        return switch (targetKey.trim()) {
+            case "CHIP", "SENSOR", "BATTERY" ->
+                    materialRepository.findByMaterialCode(targetKey.trim())
+                            .orElse(null);
+
+            default -> null;
+        };
+    }
+
+
+    private double parseScore(String aiResult) {
+        try {
+            String marker = "우선도점수:";
+            int start = aiResult.indexOf(marker);
+
+            if (start == -1) {
+                return 50.0;
+            }
+
+            String scoreText = aiResult
+                    .substring(start + marker.length())
+                    .trim()
+                    .split("\\s+")[0];
+
+            return Double.parseDouble(scoreText);
+
+        } catch (Exception e) {
+            return 50.0;
+        }
+    }
+
+    private AiRecommendationResult parseAiResult(String aiResult) {
+        return new AiRecommendationResult(
+                extractSection(aiResult, "제목:", "내용:"),
+                extractSection(aiResult, "내용:", "우선도점수:"),
+                parseScore(aiResult),
+                extractSection(aiResult, "추천대상:", "추천키:"),
+                extractSection(aiResult, "추천키:", null)
+        );
+    }
+
+    private String extractSection(String text, String startMarker, String endMarker) {
+        int start = text.indexOf(startMarker);
+
+        if (start == -1) {
+            return "";
+        }
+
+        start += startMarker.length();
+
+        int end = endMarker == null
+                ? text.length()
+                : text.indexOf(endMarker, start);
+
+        if (end == -1) {
+            end = text.length();
+        }
+
+        return text.substring(start, end).trim();
+    }
+
     public void updateRecommendation() {
-        analyze();
+        analyzeRule();
     }
 }

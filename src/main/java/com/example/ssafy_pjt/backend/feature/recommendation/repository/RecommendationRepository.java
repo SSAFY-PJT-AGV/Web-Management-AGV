@@ -7,4 +7,8 @@ import java.util.List;
 
 public interface RecommendationRepository extends JpaRepository<Recommendation, Long> {
     List<Recommendation> findAllByOrderByPriorityRankAsc();
+
+    List<Recommendation> findTop5ByOrderByCreatedAtDesc();
+
+    List<Recommendation> findByMaterial_MaterialCodeOrderByCreatedAtDesc(String materialCode);
 }

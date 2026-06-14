@@ -7,6 +7,7 @@ import com.example.ssafy_pjt.backend.feature.inventory.enums.InventoryStatus;
 import com.example.ssafy_pjt.backend.feature.inventory.repository.InventoryRepository;
 import com.example.ssafy_pjt.backend.feature.mission.entity.Mission;
 import com.example.ssafy_pjt.backend.feature.mission.enums.MissionType;
+import com.example.ssafy_pjt.backend.feature.recommendation.repository.RecommendationRepository;
 import com.example.ssafy_pjt.backend.feature.task.enums.TaskPriority;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ import java.time.LocalDateTime;
 public class MissionPriorityService {
 
     private final InventoryRepository inventoryRepository;
+    private final RecommendationRepository recommendationRepository;
 
     public int calculateScore(Mission mission, Agv agv) {
         int score = 0;
@@ -26,10 +28,36 @@ public class MissionPriorityService {
         score += getMissionTypeScore(mission);
         score += getTaskPriorityScore(mission);
         score += getInventoryScore(mission);
+        score += getAiRecommendationScore(mission);
         score += getWaitingTimeScore(mission);
         score += getRoleFitScore(mission, agv);
 
         return score;
+    }
+
+    private int getAiRecommendationScore(Mission mission) {
+        if (mission.getMaterial() == null) {
+            return 0;
+        }
+
+        String materialCode = mission.getMaterial().getMaterialCode();
+
+        int boost = recommendationRepository
+                .findByMaterial_MaterialCodeOrderByCreatedAtDesc(materialCode)
+                .stream()
+                .findFirst()
+                .map(r -> Math.min(r.getPriorityScore().intValue(), 50))
+                .orElse(0);
+
+        if (boost > 0) {
+            System.out.println(
+                    "[AI BOOST] missionId=" + mission.getMissionId()
+                            + ", material=" + materialCode
+                            + ", boost=" + boost
+            );
+        }
+
+        return boost;
     }
 
     private int getTaskPriorityScore(Mission mission) {

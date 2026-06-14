@@ -86,6 +86,9 @@ application-secret.yml
 application-secret.properties
 application.properties
 
+# AI prompt
+src/main/resources/ai/*.txt
+
 ### Logs ###
 logs/
 *.log
