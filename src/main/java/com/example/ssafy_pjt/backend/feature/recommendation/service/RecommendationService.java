@@ -5,8 +5,11 @@ import com.example.ssafy_pjt.backend.feature.inventory.entity.Inventory;
 import com.example.ssafy_pjt.backend.feature.inventory.repository.InventoryRepository;
 import com.example.ssafy_pjt.backend.feature.material.entity.Material;
 import com.example.ssafy_pjt.backend.feature.material.repository.MaterialRepository;
+import com.example.ssafy_pjt.backend.feature.mission.entity.Mission;
 import com.example.ssafy_pjt.backend.feature.mission.enums.MissionStatus;
+import com.example.ssafy_pjt.backend.feature.mission.enums.MissionType;
 import com.example.ssafy_pjt.backend.feature.mission.repository.MissionRepository;
+import com.example.ssafy_pjt.backend.feature.mission.service.ReplenishmentService;
 import com.example.ssafy_pjt.backend.feature.recommendation.ai.GmsAiClient;
 import com.example.ssafy_pjt.backend.feature.recommendation.dto.AiRecommendationResult;
 import com.example.ssafy_pjt.backend.feature.recommendation.dto.RecommendationResponse;
@@ -32,6 +35,7 @@ public class RecommendationService {
     private final FactoryStateSummaryService factoryStateSummaryService;
     private final MaterialRepository materialRepository;
     private final GmsAiClient gmsAiClient;
+    private final ReplenishmentService replenishmentService;
 
     @Transactional(readOnly = true)
     public List<RecommendationResponse> getRecommendations() {
@@ -39,13 +43,14 @@ public class RecommendationService {
                 .stream()
                 .map(r -> new RecommendationResponse(
                         getTitle(r),
-                        r.getReason()
+                        r.getReason(),
+                        r.getPriorityScore(),
+                        r.getTargetKey()
                 ))
                 .toList();
     }
 
     private String getTitle(Recommendation r) {
-
         if (r.getPriorityRank() != null && r.getPriorityRank() == 99) {
             return "AI ANALYSIS";
         }
@@ -67,6 +72,8 @@ public class RecommendationService {
 
     @Transactional
     public void analyzeRule() {
+        recommendationRepository.deleteAll();
+
         int rank = 1;
 
         rank = analyzeInventory(rank);
@@ -79,12 +86,9 @@ public class RecommendationService {
 
     @Transactional
     public void analyzeAi() {
+        String factoryState = factoryStateSummaryService.buildSummary();
 
-        String factoryState =
-                factoryStateSummaryService.buildSummary();
-
-        String aiResult =
-                gmsAiClient.analyze(factoryState);
+        String aiResult = gmsAiClient.analyze(factoryState);
 
         System.out.println("[AI RESULT]");
         System.out.println(aiResult);
@@ -95,11 +99,9 @@ public class RecommendationService {
     }
 
     private int analyzeAgvStatus(int rank) {
-
         var agvs = agvRepository.findAll();
 
         for (var agv : agvs) {
-
             if (agv.getStatus().name().equals("OFFLINE")
                     && agv.getCurrentMission() != null) {
 
@@ -108,7 +110,6 @@ public class RecommendationService {
                 r.setMaterial(null);
                 r.setPriorityRank(rank++);
                 r.setPriorityScore(90.0);
-
                 r.setReason(
                         "AGV"
                                 + String.format("%02d", agv.getAgvId())
@@ -116,7 +117,7 @@ public class RecommendationService {
                                 + agv.getCurrentMission().getMissionId()
                                 + " 이 남아있습니다. 상태 확인이 필요합니다."
                 );
-
+                r.setTargetKey("AGV" + String.format("%02d", agv.getAgvId()));
                 r.setCreatedAt(LocalDateTime.now());
 
                 recommendationRepository.save(r);
@@ -132,7 +133,7 @@ public class RecommendationService {
         for (Inventory inventory : inventories) {
             int available = inventory.getCurrentQuantity() - inventory.getReservedQuantity();
 
-            if (available <= inventory.getMinThreshold()) {
+            if (available <= 0) {
                 Recommendation r = new Recommendation();
 
                 r.setMaterial(inventory.getMaterial());
@@ -140,11 +141,14 @@ public class RecommendationService {
                 r.setPriorityScore(100.0);
                 r.setReason(
                         inventory.getMaterial().getMaterialCode()
-                                + " 재고 부족 예상. 자재 보급 Mission 생성을 추천합니다."
+                                + " 재고가 0입니다. 자재 보급 Mission 생성이 필요합니다."
                 );
+                r.setTargetKey(inventory.getMaterial().getMaterialCode());
                 r.setCreatedAt(LocalDateTime.now());
 
                 recommendationRepository.save(r);
+
+                createReplenishmentIfShortage(inventory.getMaterial().getMaterialCode());
             }
         }
 
@@ -165,6 +169,7 @@ public class RecommendationService {
                             + waitingCount
                             + "개입니다. AGV 작업 병목 가능성이 있습니다."
             );
+            r.setTargetKey("MISSION_QUEUE");
             r.setCreatedAt(LocalDateTime.now());
 
             recommendationRepository.save(r);
@@ -191,6 +196,7 @@ public class RecommendationService {
             r.setReason(
                     "AGV 대비 대기 Mission 수가 많습니다. 우선순위 기반 스케줄링이 필요합니다."
             );
+            r.setTargetKey("MISSION_QUEUE");
             r.setCreatedAt(LocalDateTime.now());
 
             recommendationRepository.save(r);
@@ -208,9 +214,73 @@ public class RecommendationService {
         r.setPriorityRank(99);
         r.setPriorityScore(parsed.priorityScore());
         r.setReason(parsed.message());
+        r.setTargetKey(parsed.targetKey());
         r.setCreatedAt(LocalDateTime.now());
 
         recommendationRepository.save(r);
+
+        createReplenishmentIfShortage(parsed.targetKey());
+    }
+
+    private void createReplenishmentIfShortage(String targetKey) {
+        Material material = resolveMaterialOrNull(targetKey);
+
+        if (material == null) {
+            return;
+        }
+
+        Inventory inventory = inventoryRepository.findAll()
+                .stream()
+                .filter(i -> i.getMaterial() != null)
+                .filter(i -> i.getMaterial().getMaterialId().equals(material.getMaterialId()))
+                .findFirst()
+                .orElse(null);
+
+        if (inventory == null) {
+            return;
+        }
+
+        int available = inventory.getCurrentQuantity() - inventory.getReservedQuantity();
+
+        if (available > 0) {
+            return;
+        }
+
+        if (hasActiveReplenishmentMission(material)) {
+            System.out.println("[AI REPLENISHMENT SKIP] active replenishment mission exists. material="
+                    + material.getMaterialCode());
+            return;
+        }
+
+        replenishmentService.createReplenishmentMissions(
+                material.getMaterialCode(),
+                inventory.getMinThreshold()
+        );
+
+        System.out.println("[AI REPLENISHMENT CREATED] material="
+                + material.getMaterialCode());
+    }
+
+    private boolean hasActiveReplenishmentMission(Material material) {
+        return missionRepository.findAll()
+                .stream()
+                .filter(mission -> mission.getMaterial() != null)
+                .filter(mission -> mission.getMaterial().getMaterialId().equals(material.getMaterialId()))
+                .filter(mission -> List.of(
+                        MissionStatus.CREATED,
+                        MissionStatus.ASSIGNED,
+                        MissionStatus.IN_PROGRESS
+                ).contains(mission.getStatus()))
+                .anyMatch(this::isReplenishmentMission);
+    }
+
+    private boolean isReplenishmentMission(Mission mission) {
+        return List.of(
+                MissionType.PICK_FROM_INBOUND,
+                MissionType.DROP_TO_CROSS,
+                MissionType.PICK_FROM_CROSS,
+                MissionType.DROP_TO_STORAGE
+        ).contains(mission.getMissionType());
     }
 
     private Material resolveMaterialOrNull(String targetKey) {
@@ -219,14 +289,13 @@ public class RecommendationService {
         }
 
         return switch (targetKey.trim()) {
-            case "CHIP", "SENSOR", "BATTERY" ->
+            case "CHIP", "SENSOR" ->
                     materialRepository.findByMaterialCode(targetKey.trim())
                             .orElse(null);
 
             default -> null;
         };
     }
-
 
     private double parseScore(String aiResult) {
         try {

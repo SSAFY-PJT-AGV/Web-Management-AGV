@@ -16,10 +16,6 @@
         <option value="CAMERA_MODULE">
           카메라 센서 모듈
         </option>
-
-        <option value="BATTERY_PACK">
-          배터리 팩
-        </option>
       </select>
     </div>
 

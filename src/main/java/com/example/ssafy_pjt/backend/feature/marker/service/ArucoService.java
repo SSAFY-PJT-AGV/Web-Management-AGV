@@ -22,8 +22,11 @@ public class ArucoService {
     private static final double MARKER_SIZE = 30.0; // mm
 
     private final ArucoDetector detector;
-    private final Mat cameraMatrix;
-    private final MatOfDouble distCoeffs;
+    private final Mat agv1CameraMatrix;
+    private final MatOfDouble agv1DistCoeffs;
+
+    private final Mat agv2CameraMatrix;
+    private final MatOfDouble agv2DistCoeffs;
 
     public ArucoService() {
         Dictionary dictionary =
@@ -35,10 +38,10 @@ public class ArucoService {
         this.detector =
                 new ArucoDetector(dictionary, parameters);
 
-        this.cameraMatrix =
+        this.agv1CameraMatrix =
                 new Mat(3, 3, CvType.CV_64F);
 
-        this.cameraMatrix.put(
+        this.agv1CameraMatrix.put(
                 0,
                 0,
                 106.68985375, 0, 108.3933636,
@@ -46,13 +49,35 @@ public class ArucoService {
                 0, 0, 1
         );
 
-        this.distCoeffs = new MatOfDouble(
-                -3.40691991e-01,
-                1.36597880e-01,
-                -1.14918997e-03,
-                2.52088239e-04,
-                -2.68438540e-02
+        this.agv1DistCoeffs =
+                new MatOfDouble(
+                        -3.40691991e-01,
+                        1.36597880e-01,
+                        -1.14918997e-03,
+                        2.52088239e-04,
+                        -2.68438540e-02
+                );
+
+
+        this.agv2CameraMatrix =
+                new Mat(3, 3, CvType.CV_64F);
+
+        this.agv2CameraMatrix.put(
+                0,
+                0,
+                89.68487251563619, 0.0, 113.59654752016765,
+                0.0, 117.76347859168304, 111.77344550170994,
+                0.0, 0.0, 1.0
         );
+
+        this.agv2DistCoeffs =
+                new MatOfDouble(
+                        -0.22362460609434323,
+                        0.03756858695252534,
+                        0.003241252232988784,
+                        -6.593849551046396e-06,
+                        -0.00246739467879383
+                );
     }
 
     public ArucoResultMessage detectFromBase64(
@@ -86,6 +111,18 @@ public class ArucoService {
             System.out.println("[ARUCO ERROR] " + e.getMessage());
             return null;
         }
+    }
+
+    private Mat getCameraMatrix(Integer agvId) {
+        return agvId != null && agvId == 2
+                ? agv2CameraMatrix
+                : agv1CameraMatrix;
+    }
+
+    private MatOfDouble getDistCoeffs(Integer agvId) {
+        return agvId != null && agvId == 2
+                ? agv2DistCoeffs
+                : agv1DistCoeffs;
     }
 
     private ArucoResultMessage detect(
@@ -190,8 +227,8 @@ public class ArucoService {
                                     bottomRight,
                                     bottomLeft
                             ),
-                            cameraMatrix,
-                            distCoeffs,
+                            getCameraMatrix(agvId),
+                            getDistCoeffs(agvId),
                             rvec,
                             tvec
                     );

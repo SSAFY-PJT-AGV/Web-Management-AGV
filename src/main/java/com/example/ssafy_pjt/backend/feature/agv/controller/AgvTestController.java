@@ -41,6 +41,6 @@ public class AgvTestController {
         private String taskId;
         private String command;
         private Integer destination;
-        private String cargo;
+        private Integer cargo;
     }
 }

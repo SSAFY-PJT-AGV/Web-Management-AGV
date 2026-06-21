@@ -17,7 +17,7 @@ public class RecommendationScheduler {
     }
 
 
-    @Scheduled(fixedDelay = 15000)
+    @Scheduled(fixedDelay = 150000000)
     public void aiCheck() {
         recommendationService.analyzeAi();
     }

@@ -289,6 +289,7 @@ public class MissionDispatchService {
 
     private boolean sendCommandAssign(Integer agvId, Mission mission) {
         Integer destination = markerResolveService.resolveDestinationMarkerId(mission);
+        Integer cargoMarkerId = markerResolveService.resolveCargoMarkerId(mission);
 
         CommandAssignMessage message = CommandAssignMessage.builder()
                 .messageType("COMMAND_ASSIGN")
@@ -297,11 +298,7 @@ public class MissionDispatchService {
                 .commandId(mission.getMissionId())
                 .command(mission.getMissionType())
                 .destination(destination)
-                .cargo(
-                        mission.getMaterial() == null
-                                ? null
-                                : mission.getMaterial().getMaterialCode()
-                )
+                .cargo(cargoMarkerId)
                 .build();
 
         try {
