@@ -46,6 +46,19 @@ public class MarkerResolveService {
         };
     }
 
+    public Integer resolveCargoMarkerId(Mission mission) {
+
+        if (mission.getMaterial() != null) {
+            return resolveMaterialBoxMarker(mission);
+        }
+
+        if (mission.getProduct() != null) {
+            return resolveProductBoxMarker(mission);
+        }
+
+        return null;
+    }
+
     private Integer resolveMaterialBoxMarker(Mission mission) {
         if (mission.getMaterial() == null) {
             throw new IllegalStateException("자재 박스 미션인데 material이 없습니다. missionId=" + mission.getMissionId());

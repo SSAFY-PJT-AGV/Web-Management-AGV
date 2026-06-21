@@ -40,7 +40,7 @@ public class ChipScenarioTestService {
                 1L,
                 MissionType.PICK_FROM_STORAGE,
                 3,
-                "CHIP"
+                3
         ));
 
         agv1Queue.add(command(
@@ -48,7 +48,7 @@ public class ChipScenarioTestService {
                 1L,
                 MissionType.DROP_TO_CONVEYOR,
                 1,
-                "CHIP"
+                3
         ));
 
         agv2Queue.add(command(
@@ -56,7 +56,7 @@ public class ChipScenarioTestService {
                 1L,
                 MissionType.PICK_FROM_CONVEYOR,
                 1,
-                "CHIP"
+                11
         ));
 
         agv2Queue.add(command(
@@ -64,7 +64,7 @@ public class ChipScenarioTestService {
                 1L,
                 MissionType.DROP_TO_FINISHED_BOX_STORAGE,
                 11,
-                "CHIP"
+                11
         ));
 
         queues.put(1, agv1Queue);
@@ -143,7 +143,7 @@ public class ChipScenarioTestService {
             Long taskId,
             MissionType command,
             Integer destination,
-            String cargo
+            Integer cargo
     ) {
         return CommandAssignMessage.builder()
                 .messageType("COMMAND_ASSIGN")

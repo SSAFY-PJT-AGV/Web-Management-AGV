@@ -13,6 +13,7 @@
       "
     >
 
+
       <!-- Header -->
       <div
         class="
@@ -31,6 +32,7 @@
         >
           {{ item.title }}
         </strong>
+
 
       </div>
 
@@ -63,11 +65,17 @@
       NO AI RECOMMENDATION
     </div>
 
+
+
   </div>
 </template>
 
 
 <script setup>
+const emit = defineEmits([
+  'open-detail'
+])
+
 defineProps({
   items: {
     type: Array,

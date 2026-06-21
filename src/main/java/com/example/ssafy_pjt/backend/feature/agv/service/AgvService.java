@@ -30,7 +30,10 @@ public class AgvService {
     public void markConnected(Integer agvId) {
         Agv agv = findAgv(agvId);
 
-        agv.setStatus(AgvStatus.IDLE);
+        if (agv.getStatus() == AgvStatus.OFFLINE) {
+            agv.setStatus(AgvStatus.IDLE);
+        }
+
         agv.setLastSeenAt(LocalDateTime.now());
     }
 

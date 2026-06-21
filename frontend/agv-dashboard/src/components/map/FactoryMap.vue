@@ -50,24 +50,17 @@
               완제품 상자 보관 구역
             </text>
 
-            <g transform="translate(-120 55)">
+            <g transform="translate(-70 55)">
               <rect x="-24" y="-24" width="48" height="48" fill="var(--accent)" />
               <text y="58" text-anchor="middle" fill="#E2E8F0" font-size="16" font-weight="1100">차량</text>
               <text y="78" text-anchor="middle" fill="#E2E8F0" font-size="16" font-weight="1100">제어 장치</text>
             </g>
 
-            <g transform="translate(0 55)">
-              <rect x="-24" y="-24" width="48" height="48" fill="var(--accent)"  />
+            <g transform="translate(70 55)">
+              <rect x="-24" y="-24" width="48" height="48" fill="var(--accent)" />
               <text y="58" text-anchor="middle" fill="#E2E8F0" font-size="16" font-weight="1100">카메라</text>
               <text y="78" text-anchor="middle" fill="#E2E8F0" font-size="16" font-weight="1100">센서 모듈</text>
             </g>
-
-            <g transform="translate(120 55)">
-              <rect x="-24" y="-24" width="48" height="48" fill="var(--accent)"  />
-              <text y="58" text-anchor="middle" fill="#E2E8F0" font-size="16" font-weight="1100">배터리</text>
-              <text y="78" text-anchor="middle" fill="#E2E8F0" font-size="16" font-weight="1100">팩</text>
-            </g>
-
 
             <!-- Material Storage -->
             <text
@@ -81,22 +74,16 @@
               자재 상자 보관 구역
             </text>
 
-            <g transform="translate(-120 335)">
-              <rect x="-24" y="-24" width="48" height="48" fill="var(--green)"  />
+            <g transform="translate(-70 335)">
+              <rect x="-24" y="-24" width="48" height="48" fill="var(--green)" />
               <text y="58" text-anchor="middle" fill="#E2E8F0" font-size="17" font-weight="900">CHIP</text>
               <text y="78" text-anchor="middle" fill="#94A3B8" font-size="15" font-weight="700">칩</text>
             </g>
 
-            <g transform="translate(0 335)">
-              <rect x="-24" y="-24" width="48" height="48" fill="var(--green)"  />
+            <g transform="translate(70 335)">
+              <rect x="-24" y="-24" width="48" height="48" fill="var(--green)" />
               <text y="58" text-anchor="middle" fill="#E2E8F0" font-size="17" font-weight="900">SENSOR</text>
               <text y="78" text-anchor="middle" fill="#94A3B8" font-size="15" font-weight="700">센서</text>
-            </g>
-
-            <g transform="translate(120 335)">
-              <rect x="-24" y="-24" width="48" height="48" fill="var(--green)"  />
-              <text y="58" text-anchor="middle" fill="#E2E8F0" font-size="17" font-weight="900">BATTERY</text>
-              <text y="78" text-anchor="middle" fill="#94A3B8" font-size="15" font-weight="700">배터리</text>
             </g>
 
           </g>
