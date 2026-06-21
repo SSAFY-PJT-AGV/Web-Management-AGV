@@ -6,7 +6,6 @@ import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.ArucoDetector;
-import org.opencv.core.MatOfDouble;
 import org.opencv.objdetect.DetectorParameters;
 import org.opencv.objdetect.Dictionary;
 import org.opencv.objdetect.Objdetect;
@@ -14,7 +13,15 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 @Service
 public class ArucoService {
@@ -22,11 +29,21 @@ public class ArucoService {
     private static final double MARKER_SIZE = 30.0; // mm
 
     private final ArucoDetector detector;
+
     private final Mat agv1CameraMatrix;
     private final MatOfDouble agv1DistCoeffs;
 
     private final Mat agv2CameraMatrix;
     private final MatOfDouble agv2DistCoeffs;
+
+    private final ExecutorService visionExecutor =
+            Executors.newFixedThreadPool(2);
+
+    private final Map<Integer, AtomicReference<FrameJob>> latestFrameByAgv =
+            new ConcurrentHashMap<>();
+
+    private final Set<Integer> processingAgvs =
+            ConcurrentHashMap.newKeySet();
 
     public ArucoService() {
         Dictionary dictionary =
@@ -58,7 +75,6 @@ public class ArucoService {
                         -2.68438540e-02
                 );
 
-
         this.agv2CameraMatrix =
                 new Mat(3, 3, CvType.CV_64F);
 
@@ -80,14 +96,74 @@ public class ArucoService {
                 );
     }
 
-    public ArucoResultMessage detectFromBase64(
+    public void submitFrame(
+            Integer agvId,
+            String imageBase64,
+            Consumer<ArucoResultMessage> resultConsumer
+    ) {
+        if (agvId == null || imageBase64 == null || imageBase64.isBlank()) {
+            return;
+        }
+
+        latestFrameByAgv
+                .computeIfAbsent(agvId, id -> new AtomicReference<>())
+                .set(new FrameJob(agvId, imageBase64));
+
+        if (processingAgvs.add(agvId)) {
+            visionExecutor.submit(() -> processLatestFrames(agvId, resultConsumer));
+        }
+    }
+
+    private void processLatestFrames(
+            Integer agvId,
+            Consumer<ArucoResultMessage> resultConsumer
+    ) {
+        try {
+            while (true) {
+                AtomicReference<FrameJob> ref =
+                        latestFrameByAgv.get(agvId);
+
+                if (ref == null) {
+                    return;
+                }
+
+                FrameJob job =
+                        ref.getAndSet(null);
+
+                if (job == null) {
+                    return;
+                }
+
+                ArucoResultMessage result =
+                        detectFromBase64(job.agvId(), job.imageBase64());
+
+                if (result != null) {
+                    resultConsumer.accept(result);
+                }
+            }
+
+        } catch (Exception e) {
+            System.out.println("[ARUCO WORKER ERROR] agvId="
+                    + agvId
+                    + ", reason="
+                    + e.getMessage());
+
+        } finally {
+            processingAgvs.remove(agvId);
+
+            AtomicReference<FrameJob> ref =
+                    latestFrameByAgv.get(agvId);
+
+            if (ref != null && ref.get() != null && processingAgvs.add(agvId)) {
+                visionExecutor.submit(() -> processLatestFrames(agvId, resultConsumer));
+            }
+        }
+    }
+
+    private ArucoResultMessage detectFromBase64(
             Integer agvId,
             String imageBase64
     ) {
-        if (imageBase64 == null || imageBase64.isBlank()) {
-            return null;
-        }
-
         try {
             String pureBase64 =
                     removeBase64Prefix(imageBase64);
@@ -111,18 +187,6 @@ public class ArucoService {
             System.out.println("[ARUCO ERROR] " + e.getMessage());
             return null;
         }
-    }
-
-    private Mat getCameraMatrix(Integer agvId) {
-        return agvId != null && agvId == 2
-                ? agv2CameraMatrix
-                : agv1CameraMatrix;
-    }
-
-    private MatOfDouble getDistCoeffs(Integer agvId) {
-        return agvId != null && agvId == 2
-                ? agv2DistCoeffs
-                : agv1DistCoeffs;
     }
 
     private ArucoResultMessage detect(
@@ -150,179 +214,28 @@ public class ArucoService {
         );
 
         if (ids.empty() || corners.isEmpty()) {
-            return buildNotDetectedResult(
-                    agvId,
-                    imageWidth,
-                    imageHeight
-            );
+            return buildNotDetectedResult(agvId, imageWidth, imageHeight);
         }
 
-        List<ArucoResultMessage.MarkerInfo> markers =
-                new ArrayList<>();
+        int selectedIndex =
+                findLargestMarkerIndex(corners);
 
-        for (int i = 0; i < ids.rows(); i++) {
-            int markerId =
-                    (int) ids.get(i, 0)[0];
-
-            Mat corner =
-                    corners.get(i);
-
-            double[] topLeft =
-                    corner.get(0, 0);
-
-            double[] topRight =
-                    corner.get(0, 1);
-
-            double[] bottomRight =
-                    corner.get(0, 2);
-
-            double[] bottomLeft =
-                    corner.get(0, 3);
-
-            double centerX =
-                    (
-                            topLeft[0]
-                                    + topRight[0]
-                                    + bottomRight[0]
-                                    + bottomLeft[0]
-                    ) / 4.0;
-
-            double centerY =
-                    (
-                            topLeft[1]
-                                    + topRight[1]
-                                    + bottomRight[1]
-                                    + bottomLeft[1]
-                    ) / 4.0;
-
-            double xError =
-                    (centerX - imageWidth / 2.0)
-                            / (imageWidth / 2.0);
-
-            double yError =
-                    (centerY - imageHeight / 2.0)
-                            / (imageHeight / 2.0);
-
-            double width =
-                    distance2d(topLeft, topRight);
-
-            double height =
-                    distance2d(topLeft, bottomLeft);
-
-            double area =
-                    Imgproc.contourArea(corner);
-
-            Mat rvec =
-                    new Mat();
-
-            Mat tvec =
-                    new Mat();
-
-            boolean solved =
-                    Calib3d.solvePnP(
-                            createObjectPoints(),
-                            createImagePoints(
-                                    topLeft,
-                                    topRight,
-                                    bottomRight,
-                                    bottomLeft
-                            ),
-                            getCameraMatrix(agvId),
-                            getDistCoeffs(agvId),
-                            rvec,
-                            tvec
-                    );
-
-            if (!solved) {
-                continue;
-            }
-
-            double rx =
-                    rvec.get(0, 0)[0];
-
-            double ry =
-                    rvec.get(1, 0)[0];
-
-            double rz =
-                    rvec.get(2, 0)[0];
-
-            double tx =
-                    tvec.get(0, 0)[0];
-
-            double ty =
-                    tvec.get(1, 0)[0];
-
-            double tz =
-                    tvec.get(2, 0)[0];
-
-            double distance =
-                    Math.sqrt(tx * tx + ty * ty + tz * tz);
-
-            double yaw =
-                    Math.toDegrees(Math.atan2(tx, tz));
-
-            double pitch =
-                    Math.toDegrees(Math.atan2(-ty, tz));
-
-            ArucoResultMessage.MarkerInfo marker =
-                    ArucoResultMessage.MarkerInfo.builder()
-                            .markerId(markerId)
-                            .corners(
-                                    ArucoResultMessage.Corners.builder()
-                                            .topLeft(point(topLeft))
-                                            .topRight(point(topRight))
-                                            .bottomRight(point(bottomRight))
-                                            .bottomLeft(point(bottomLeft))
-                                            .build()
-                            )
-                            .center(
-                                    List.of(
-                                            round(centerX),
-                                            round(centerY)
-                                    )
-                            )
-                            .xError(round(xError))
-                            .yError(round(yError))
-                            .rvec(
-                                    List.of(
-                                            round(rx),
-                                            round(ry),
-                                            round(rz)
-                                    )
-                            )
-                            .tvec(
-                                    List.of(
-                                            round(tx),
-                                            round(ty),
-                                            round(tz)
-                                    )
-                            )
-                            .tx(round(tx))
-                            .ty(round(ty))
-                            .tz(round(tz))
-                            .distance(round(distance))
-                            .yaw(round(yaw))
-                            .pitch(round(pitch))
-                            .width(round(width))
-                            .height(round(height))
-                            .area(round(area))
-                            .xCentered(Math.abs(xError) < 0.05)
-                            .yCentered(Math.abs(yError) < 0.05)
-                            .centered(
-                                    Math.abs(xError) < 0.05
-                                            && Math.abs(yError) < 0.05
-                            )
-                            .build();
-
-            markers.add(marker);
+        if (selectedIndex < 0) {
+            return buildNotDetectedResult(agvId, imageWidth, imageHeight);
         }
 
-        if (markers.isEmpty()) {
-            return buildNotDetectedResult(
-                    agvId,
-                    imageWidth,
-                    imageHeight
-            );
+        ArucoResultMessage.MarkerInfo marker =
+                buildMarkerInfo(
+                        agvId,
+                        ids,
+                        corners.get(selectedIndex),
+                        selectedIndex,
+                        imageWidth,
+                        imageHeight
+                );
+
+        if (marker == null) {
+            return buildNotDetectedResult(agvId, imageWidth, imageHeight);
         }
 
         return ArucoResultMessage.builder()
@@ -330,12 +243,148 @@ public class ArucoService {
                 .type("aruco")
                 .agvId(agvId)
                 .detected(true)
-                .markerCount(markers.size())
+                .markerCount(1)
                 .imageWidth(imageWidth)
                 .imageHeight(imageHeight)
-                .markers(markers)
+                .markers(List.of(marker))
                 .timestamp(nowSeconds())
                 .build();
+    }
+
+    private int findLargestMarkerIndex(List<Mat> corners) {
+        return java.util.stream.IntStream
+                .range(0, corners.size())
+                .boxed()
+                .max(Comparator.comparingDouble(i -> Imgproc.contourArea(corners.get(i))))
+                .orElse(-1);
+    }
+
+    private ArucoResultMessage.MarkerInfo buildMarkerInfo(
+            Integer agvId,
+            Mat ids,
+            Mat corner,
+            int index,
+            int imageWidth,
+            int imageHeight
+    ) {
+        int markerId =
+                (int) ids.get(index, 0)[0];
+
+        double[] topLeft =
+                corner.get(0, 0);
+
+        double[] topRight =
+                corner.get(0, 1);
+
+        double[] bottomRight =
+                corner.get(0, 2);
+
+        double[] bottomLeft =
+                corner.get(0, 3);
+
+        double centerX =
+                (topLeft[0] + topRight[0] + bottomRight[0] + bottomLeft[0]) / 4.0;
+
+        double centerY =
+                (topLeft[1] + topRight[1] + bottomRight[1] + bottomLeft[1]) / 4.0;
+
+        double xError =
+                (centerX - imageWidth / 2.0) / (imageWidth / 2.0);
+
+        double yError =
+                (centerY - imageHeight / 2.0) / (imageHeight / 2.0);
+
+        double width =
+                distance2d(topLeft, topRight);
+
+        double height =
+                distance2d(topLeft, bottomLeft);
+
+        double area =
+                Imgproc.contourArea(corner);
+
+        Mat rvec =
+                new Mat();
+
+        Mat tvec =
+                new Mat();
+
+        boolean solved =
+                Calib3d.solvePnP(
+                        createObjectPoints(),
+                        createImagePoints(
+                                topLeft,
+                                topRight,
+                                bottomRight,
+                                bottomLeft
+                        ),
+                        getCameraMatrix(agvId),
+                        getDistCoeffs(agvId),
+                        rvec,
+                        tvec
+                );
+
+        if (!solved) {
+            return null;
+        }
+
+        double rx = rvec.get(0, 0)[0];
+        double ry = rvec.get(1, 0)[0];
+        double rz = rvec.get(2, 0)[0];
+
+        double tx = tvec.get(0, 0)[0];
+        double ty = tvec.get(1, 0)[0];
+        double tz = tvec.get(2, 0)[0];
+
+        double distance =
+                Math.sqrt(tx * tx + ty * ty + tz * tz);
+
+        double yaw =
+                Math.toDegrees(Math.atan2(tx, tz));
+
+        double pitch =
+                Math.toDegrees(Math.atan2(-ty, tz));
+
+        return ArucoResultMessage.MarkerInfo.builder()
+                .markerId(markerId)
+                .corners(
+                        ArucoResultMessage.Corners.builder()
+                                .topLeft(point(topLeft))
+                                .topRight(point(topRight))
+                                .bottomRight(point(bottomRight))
+                                .bottomLeft(point(bottomLeft))
+                                .build()
+                )
+                .center(List.of(round(centerX), round(centerY)))
+                .xError(round(xError))
+                .yError(round(yError))
+                .rvec(List.of(round(rx), round(ry), round(rz)))
+                .tvec(List.of(round(tx), round(ty), round(tz)))
+                .tx(round(tx))
+                .ty(round(ty))
+                .tz(round(tz))
+                .distance(round(distance))
+                .yaw(round(yaw))
+                .pitch(round(pitch))
+                .width(round(width))
+                .height(round(height))
+                .area(round(area))
+                .xCentered(Math.abs(xError) < 0.05)
+                .yCentered(Math.abs(yError) < 0.05)
+                .centered(Math.abs(xError) < 0.05 && Math.abs(yError) < 0.05)
+                .build();
+    }
+
+    private Mat getCameraMatrix(Integer agvId) {
+        return agvId != null && agvId == 2
+                ? agv2CameraMatrix
+                : agv1CameraMatrix;
+    }
+
+    private MatOfDouble getDistCoeffs(Integer agvId) {
+        return agvId != null && agvId == 2
+                ? agv2DistCoeffs
+                : agv1DistCoeffs;
     }
 
     private MatOfPoint3f createObjectPoints() {
@@ -382,19 +431,11 @@ public class ArucoService {
                 .build();
     }
 
-    private List<Double> point(
-            double[] point
-    ) {
-        return List.of(
-                round(point[0]),
-                round(point[1])
-        );
+    private List<Double> point(double[] point) {
+        return List.of(round(point[0]), round(point[1]));
     }
 
-    private double distance2d(
-            double[] a,
-            double[] b
-    ) {
+    private double distance2d(double[] a, double[] b) {
         double dx =
                 b[0] - a[0];
 
@@ -404,13 +445,9 @@ public class ArucoService {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    private String removeBase64Prefix(
-            String imageBase64
-    ) {
+    private String removeBase64Prefix(String imageBase64) {
         if (imageBase64.contains(",")) {
-            return imageBase64.substring(
-                    imageBase64.indexOf(",") + 1
-            );
+            return imageBase64.substring(imageBase64.indexOf(",") + 1);
         }
 
         return imageBase64;
@@ -420,9 +457,13 @@ public class ArucoService {
         return System.currentTimeMillis() / 1000.0;
     }
 
-    private double round(
-            double value
-    ) {
+    private double round(double value) {
         return Math.round(value * 1000.0) / 1000.0;
+    }
+
+    private record FrameJob(
+            Integer agvId,
+            String imageBase64
+    ) {
     }
 }
