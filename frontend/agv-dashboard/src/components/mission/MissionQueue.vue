@@ -99,6 +99,7 @@ const missionMap = {
 
   PICK_FROM_CONVEYOR: '컨베이어 회수',
   DROP_TO_FINISHED_BOX_STORAGE: '부품 투입',
+  PICK_FROM_FINISHED_BOX_STORAGE: '완제품 상자 픽업',
 
   PICK_FROM_INBOUND: '부품 상자 픽업',
   DROP_TO_OUTBOUND: '출고 이동',

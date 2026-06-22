@@ -29,12 +29,39 @@
 
 
       <!-- 상태 -->
-      <span
-        class="border px-2 py-0.5 text-[0.62rem] tracking-[0.12em]"
-        :class="statusClass(item.status)"
-      >
-        {{ item.status }}
-      </span>
+      <div class="flex items-center gap-2">
+
+        <span
+          class="
+            border
+            px-2
+            py-0.5
+            text-[0.62rem]
+            tracking-[0.12em]
+          "
+          :class="statusClass(item.status)"
+        >
+          {{ item.status }}
+        </span>
+
+        <button
+          v-if="item.status !== 'DONE'"
+          class="
+            border border-red-500
+            px-2
+            py-0.5
+            text-[0.58rem]
+            tracking-[0.12em]
+            text-red-400
+            hover:bg-red-500
+            hover:text-black
+          "
+          @click.stop="cancelTask(item.taskId)"
+        >
+          X
+        </button>
+
+      </div>
 
     </article>
 
@@ -51,6 +78,9 @@
 
 
 <script setup>
+import { taskApi } from '../../api/taskApi'
+
+const emit = defineEmits(['cancelled'])
 
 defineProps({
   items: {
@@ -70,22 +100,29 @@ function formatProduct(type) {
   return map[type] ?? type
 }
 
+async function cancelTask(taskId) {
+  try {
+    await taskApi.cancel(taskId)
+    emit('cancelled')
+  } catch (e) {
+    console.error('[TASK CANCEL FAILED]', e)
+  }
+}
 
 function statusClass(status) {
 
-  if (status === 'COMPLETED') {
+  if (status === 'DONE') {
     return 'border-[var(--green)] text-[var(--green)]'
   }
 
-  if (status === 'IN_PROGRESS') {
+  if (status === 'RUNNING') {
     return 'border-[var(--accent)] text-[var(--accent)]'
   }
 
-  if (status === 'FAILED') {
+  if (status === 'CANCELLED') {
     return 'border-[var(--red)] text-[var(--red)]'
   }
 
   return 'border-[var(--amber)] text-[var(--amber)]'
 }
-
 </script>

@@ -5,6 +5,7 @@ public enum AgvStatus {
     ASSIGNED,
     MOVING,
     WAITING,
+    STOP,
     ARRIVED,
     LOADING,
     UNLOADING,

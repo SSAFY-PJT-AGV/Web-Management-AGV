@@ -17,6 +17,7 @@ import com.example.ssafy_pjt.backend.feature.task.dto.TaskCreateRequest;
 import com.example.ssafy_pjt.backend.feature.task.dto.TaskResponse;
 import com.example.ssafy_pjt.backend.feature.task.entity.ProductionTask;
 import com.example.ssafy_pjt.backend.feature.task.enums.TaskPriority;
+import com.example.ssafy_pjt.backend.feature.task.enums.TaskStatus;
 import com.example.ssafy_pjt.backend.feature.task.repository.ProductionTaskRepository;
 import com.example.ssafy_pjt.backend.feature.zone.entity.Zone;
 import com.example.ssafy_pjt.backend.feature.zone.repository.ZoneRepository;
@@ -91,6 +92,52 @@ public class TaskService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 생산 작업입니다."));
 
         return new TaskResponse(task);
+    }
+
+    @Transactional
+    public void cancelTask(Long taskId) {
+
+        ProductionTask task =
+                productionTaskRepository.findById(taskId)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException("존재하지 않는 작업입니다.")
+                        );
+
+        task.setStatus(TaskStatus.CANCELLED);
+
+        List<Mission> missions =
+                missionRepository.findAll()
+                        .stream()
+                        .filter(m ->
+                                m.getTask() != null &&
+                                        m.getTask()
+                                                .getTaskId()
+                                                .equals(taskId)
+                        )
+                        .toList();
+
+
+        for (Mission mission : missions) {
+
+            if (mission.getStatus() == MissionStatus.COMPLETED) {
+                continue;
+            }
+
+            mission.setStatus(MissionStatus.CANCELLED);
+
+            if (mission.getAgv() != null
+                    && mission.getAgv().getCurrentMission() != null
+                    && mission.getAgv()
+                    .getCurrentMission()
+                    .getMissionId()
+                    .equals(mission.getMissionId())) {
+
+                mission.getAgv().setCurrentMission(null);
+            }
+        }
+
+        dashboardBroadcastService.taskRefresh();
+        dashboardBroadcastService.missionRefresh();
     }
 
     private void checkAndCreateReplenishmentMissions(ProductionTask task) {
@@ -188,7 +235,36 @@ public class TaskService {
         Zone finishedBoxStorage = zoneRepository.findByZoneName("FINISHED_BOX_STORAGE")
                 .orElseThrow(() -> new IllegalArgumentException("완제품 상자 보관 구역이 없습니다."));
 
+        Zone outbound = zoneRepository.findByZoneName("OUTBOUND")
+                .orElseThrow(() -> new IllegalArgumentException("출고 구역이 없습니다."));
+
         int sequence = 1;
+
+        ProductMaterial firstProductMaterial = productMaterials.get(0);
+
+        // AGV02: 빈 완제품 상자 가져오기
+        createMission(
+                task,
+                MissionType.PICK_FROM_INBOUND,
+                firstProductMaterial,
+                product,
+                0,
+                outbound,
+                null,
+                sequence++
+        );
+
+        // AGV02: 빈 완제품 상자를 완제품 보관 구역에 배치
+        createMission(
+                task,
+                MissionType.DROP_EMPTY_BOX,
+                firstProductMaterial,
+                product,
+                0,
+                outbound,
+                finishedBoxStorage,
+                sequence++
+        );
 
         for (ProductMaterial productMaterial : productMaterials) {
             int requiredQuantity =
@@ -238,6 +314,28 @@ public class TaskService {
                     sequence++
             );
         }
+
+        createMission(
+                task,
+                MissionType.PICK_FROM_FINISHED_BOX_STORAGE,
+                firstProductMaterial,
+                product,
+                task.getQuantity(),
+                finishedBoxStorage,
+                null,
+                sequence++
+        );
+
+        createMission(
+                task,
+                MissionType.DROP_TO_OUTBOUND,
+                firstProductMaterial,
+                product,
+                task.getQuantity(),
+                finishedBoxStorage,
+                outbound,
+                sequence++
+        );
     }
 
     private void createMission(

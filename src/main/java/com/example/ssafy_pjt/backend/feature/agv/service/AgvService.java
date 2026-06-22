@@ -4,7 +4,10 @@ import com.example.ssafy_pjt.backend.feature.agv.dto.AgvResponse;
 import com.example.ssafy_pjt.backend.feature.agv.entity.Agv;
 import com.example.ssafy_pjt.backend.feature.agv.enums.AgvStatus;
 import com.example.ssafy_pjt.backend.feature.agv.repository.AgvRepository;
+import com.example.ssafy_pjt.backend.feature.mission.enums.MissionType;
 import com.example.ssafy_pjt.backend.websocket.dto.AgvStatusMessage;
+import com.example.ssafy_pjt.backend.websocket.sender.AgvCommandSender;
+import com.example.ssafy_pjt.backend.websocket.dto.CommandAssignMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +20,7 @@ import java.util.List;
 public class AgvService {
 
     private final AgvRepository agvRepository;
+    private final AgvCommandSender agvCommandSender;
 
     @Transactional(readOnly = true)
     public List<AgvResponse> getAgvs() {
@@ -65,22 +69,46 @@ public class AgvService {
 
     @Transactional
     public void pauseAgv(Integer agvId) {
+
         Agv agv = findAgv(agvId);
 
-        agv.setStatus(AgvStatus.WAITING);
+        agv.setStatus(AgvStatus.STOP);
         agv.setLastSeenAt(LocalDateTime.now());
 
-        // TODO: WebSocket으로 AGV에게 STOP 또는 PAUSE 명령 전송
+        agvCommandSender.sendCommand(
+                agvId,
+                CommandAssignMessage.builder()
+                        .messageType("COMMAND_ASSIGN")
+                        .agvId(agvId)
+                        .taskId(null)
+                        .commandId(null)
+                        .command(MissionType.STOP)
+                        .destination(null)
+                        .cargo(null)
+                        .build()
+        );
     }
 
     @Transactional
     public void resumeAgv(Integer agvId) {
+
         Agv agv = findAgv(agvId);
 
-        agv.setStatus(AgvStatus.IDLE);
+        agv.setStatus(AgvStatus.MOVING);
         agv.setLastSeenAt(LocalDateTime.now());
 
-        // TODO: WebSocket으로 AGV에게 RESUME 명령 전송
+        agvCommandSender.sendCommand(
+                agvId,
+                CommandAssignMessage.builder()
+                        .messageType("COMMAND_ASSIGN")
+                        .agvId(agvId)
+                        .taskId(null)
+                        .commandId(null)
+                        .command(MissionType.RESUME)
+                        .destination(null)
+                        .cargo(null)
+                        .build()
+        );
     }
 
     @Transactional

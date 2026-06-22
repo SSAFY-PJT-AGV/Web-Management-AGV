@@ -18,6 +18,7 @@ public enum MissionType {
     // =====================
     PICK_FROM_CONVEYOR,
     DROP_TO_FINISHED_BOX_STORAGE,
+    PICK_FROM_FINISHED_BOX_STORAGE,
 
     // =====================
     // AGV02 입출고 작업

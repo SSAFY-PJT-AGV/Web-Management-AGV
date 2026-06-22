@@ -13,10 +13,10 @@ VALUES
 -- Product Material / BOM
 INSERT IGNORE INTO product_material (id, product_id, material_id, quantity_per_unit)
 VALUES
-    (1, 1, 1, 2),
+    (1, 1, 1, 1),
     (2, 1, 2, 1),
-    (3, 2, 2, 2),
-    (4, 2, 1, 1);;
+    (3, 2, 1, 2),
+    (4, 2, 2, 1);
 
 -- Zone
 INSERT IGNORE INTO zone (zone_id, zone_name, zone_type, status)
