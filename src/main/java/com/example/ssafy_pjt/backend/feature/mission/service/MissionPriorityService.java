@@ -75,15 +75,33 @@ public class MissionPriorityService {
     }
 
     private int getInventoryScore(Mission mission) {
+
         if (mission.getMaterial() == null) {
             return 0;
         }
 
-        String materialCode = mission.getMaterial().getMaterialCode();
+        if (!isReplenishmentMission(mission)) {
+            return 0;
+        }
 
-        return inventoryRepository.findByMaterial_MaterialCode(materialCode)
+        String materialCode =
+                mission.getMaterial().getMaterialCode();
+
+        return inventoryRepository
+                .findByMaterial_MaterialCode(materialCode)
                 .map(this::toInventoryScore)
                 .orElse(0);
+    }
+
+    private boolean isReplenishmentMission(Mission mission) {
+        return switch (mission.getMissionType()) {
+            case PICK_FROM_INBOUND,
+                 DROP_TO_CROSS,
+                 PICK_FROM_CROSS,
+                 DROP_TO_STORAGE -> true;
+
+            default -> false;
+        };
     }
 
     private int toInventoryScore(Inventory inventory) {
