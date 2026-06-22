@@ -46,7 +46,7 @@
 
           <div class="grid grid-cols-3 gap-3">
             <div
-              v-for="r in recommendations"
+              v-for="r in safeRecommendations"
               :key="r.title + r.targetKey + r.message"
               class="border border-[var(--border2)] bg-black/20 p-3"
             >
@@ -70,7 +70,7 @@
             </div>
 
             <div
-              v-if="recommendations.length === 0"
+              v-if="safeRecommendations.length === 0"
               class="col-span-3 border border-[var(--border2)] bg-black/20 p-4 text-center text-xs tracking-[0.16em] text-[var(--muted)]"
             >
               NO AI RECOMMENDATION
@@ -184,7 +184,7 @@
         </article>
 
         <article class="panel-frame p-4">
-          <div class="panel-title mb-3">MISSION WAIT RANKING</div>
+          <div class="panel-title mb-3">UPCOMING MISSIONS</div>
 
           <div
             v-for="m in topWaitingMissions"
@@ -193,16 +193,9 @@
           >
             <div class="mb-1 flex justify-between text-xs">
               <span class="truncate text-[var(--accent)]">
-                #{{ m.missionId }} {{ m.missionType }}
+                #{{ m.missionId }} {{ missionLabel(m.missionType) }}
               </span>
               <span>{{ m.wait }}</span>
-            </div>
-
-            <div class="h-3 bg-black">
-              <div
-                class="h-full bg-[var(--accent)]"
-                :style="{ width: m.waitPercent + '%' }"
-              />
             </div>
 
             <div class="mt-1 flex justify-between text-[0.65rem] text-[var(--muted)]">
@@ -290,16 +283,23 @@ const activeMissions = computed(() =>
   )
 )
 
+const safeRecommendations = computed(() =>
+  Array.isArray(props.recommendations) ? props.recommendations : []
+)
+
 const agvCards = computed(() =>
   props.agvs.map(a => {
     const activeCount = activeMissions.value.filter(
       m => String(m.agvId) === String(a.agvId)
     ).length
 
-    const loadScore = Math.min(
-      100,
-      activeCount * 20 + statusLoad(a.status)
-    )
+    const loadScore =
+      a.status === 'OFFLINE'
+        ? 0
+        : Math.min(
+            100,
+            activeCount * 20 + statusLoad(a.status)
+          )
 
     return {
       agvId: a.agvId,
@@ -372,19 +372,51 @@ const inventoryCards = computed(() =>
   })
 )
 
+const missionMap = {
+  PICK_FROM_STORAGE: '부품 픽업',
+  DROP_TO_CONVEYOR: '컨베이어 투입',
+
+  PICK_FROM_CONVEYOR: '컨베이어 회수',
+  DROP_TO_FINISHED_BOX_STORAGE: '부품 투입',
+
+  PICK_FROM_FINISHED_BOX_STORAGE: '완제품 상자 픽업',
+
+  PICK_FROM_INBOUND: '부품 상자 픽업',
+  DROP_TO_OUTBOUND: '출고 이동',
+
+  PICK_EMPTY_BOX: '빈 상자 픽업',
+  DROP_EMPTY_BOX: '빈 상자 보관',
+
+  DROP_TO_CROSS: '교차 구역 전달',
+  PICK_FROM_CROSS: '교차 구역 회수',
+
+  DROP_TO_STORAGE: '자재 창고 복귀',
+  RETURN_TO_BASE: '복귀',
+
+  WAIT: '대기',
+  STOP: '정지',
+  RESUME: '재개'
+}
+
+function missionLabel(type) {
+  return missionMap[type] ?? type
+}
+
 const topWaitingMissions = computed(() =>
   activeMissions.value
+    .filter(m =>
+      m.status === 'CREATED' ||
+      m.status === 'ASSIGNED'
+    )
     .map(m => {
       const seconds = waitSeconds(m.createdAt)
 
       return {
         ...m,
         waitSeconds: seconds,
-        wait: formatSeconds(seconds),
-        waitPercent: Math.min(100, Math.round((seconds / 120) * 100))
+        wait: formatSeconds(seconds)
       }
     })
-    .sort((a, b) => b.waitSeconds - a.waitSeconds)
     .slice(0, 5)
 )
 

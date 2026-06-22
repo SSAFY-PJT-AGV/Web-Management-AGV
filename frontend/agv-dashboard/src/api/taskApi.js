@@ -9,4 +9,7 @@ export const taskApi = {
   // 제품 생산 요청 생성
   createTask: body =>
       safePost('/api/tasks', body),
+
+  cancel: taskId =>
+      safePost(`/api/tasks/${taskId}/cancel`)
 }

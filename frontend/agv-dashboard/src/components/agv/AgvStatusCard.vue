@@ -1,14 +1,7 @@
 <template>
   <section class="relative border-b border-[var(--border)] bg-[var(--panel)]">
 
-    <div class="flex items-center justify-between border-b border-[var(--border2)] bg-[var(--panel2)] px-3 py-1.5">
-      <span class="panel-title">UNIT STATUS</span>
-      <span class="border border-[var(--accent)] px-2 py-0.5 text-[0.65rem] tracking-[0.12em] text-[var(--accent)]">
-        {{ displayAgvId }}
-      </span>
-    </div>
-
-    <div class="p-3">
+    <div class="p-4">
       <div class="mb-3 flex items-center justify-between">
         <span class="font-['Barlow_Condensed'] text-3xl font-bold tracking-[0.08em] text-[var(--text)]">
           {{ displayAgvId }}
@@ -101,6 +94,9 @@ const statusClass = computed(() => {
 
     case 'ERROR':
       return 'border border-[var(--red)] bg-[#1a0008] text-[var(--red)] critical-glow'
+
+    case 'STOP':
+      return 'text-red-400 border-red-400'
 
     default:
       return 'border border-[var(--dim)] bg-[#0a1520] text-[var(--muted)]'

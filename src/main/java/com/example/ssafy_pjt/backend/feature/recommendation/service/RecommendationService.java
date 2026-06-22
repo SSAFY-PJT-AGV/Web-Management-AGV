@@ -179,24 +179,18 @@ public class RecommendationService {
     }
 
     private int analyzeAgvLoad(int rank) {
-        long agvCount = agvRepository.count();
+        long failedCount =
+                missionRepository.countByStatus(MissionStatus.FAILED);
 
-        if (agvCount <= 0) {
-            return rank;
-        }
-
-        long waitingCount = missionRepository.countByStatus(MissionStatus.CREATED);
-
-        if (waitingCount >= agvCount * 3) {
+        if (failedCount > 0) {
             Recommendation r = new Recommendation();
 
             r.setMaterial(null);
             r.setPriorityRank(rank++);
-            r.setPriorityScore(70.0);
+            r.setPriorityScore(85.0);
             r.setReason(
-                    "AGV 대비 대기 Mission 수가 많습니다. 우선순위 기반 스케줄링이 필요합니다."
+                    "FAILED Mission이 발생했습니다. AGV 상태와 Mission 처리 흐름 확인이 필요합니다."
             );
-            r.setTargetKey("MISSION_QUEUE");
             r.setCreatedAt(LocalDateTime.now());
 
             recommendationRepository.save(r);

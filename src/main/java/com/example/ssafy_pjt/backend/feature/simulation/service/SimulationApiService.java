@@ -7,6 +7,8 @@ import com.example.ssafy_pjt.backend.feature.marker.enums.MarkerType;
 import com.example.ssafy_pjt.backend.feature.marker.repository.ArucoMarkerRepository;
 import com.example.ssafy_pjt.backend.feature.marker.service.MarkerResolveService;
 import com.example.ssafy_pjt.backend.feature.mission.entity.Mission;
+import com.example.ssafy_pjt.backend.feature.mission.enums.MissionType;
+import com.example.ssafy_pjt.backend.feature.mission.repository.MissionRepository;
 import com.example.ssafy_pjt.backend.feature.simulation.dto.SimulationAgvResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -130,6 +132,13 @@ public class SimulationApiService {
     }
 
     private String resolvePayload(Agv agv, Mission mission) {
+
+        String actualCargo = resolveActualCargo(agv);
+
+        if (actualCargo != null) {
+            return actualCargo;
+        }
+
         if (mission == null) {
             return null;
         }
@@ -142,15 +151,44 @@ public class SimulationApiService {
                     yield null;
                 }
 
-                yield "MATERIAL_BOX:" + mission.getMaterial().getMaterialCode();
+                yield mission.getMaterial().getMaterialCode();
             }
 
-            case PICK_FROM_INBOUND,
-                 DROP_TO_CROSS,
-                 PICK_FROM_CROSS,
-                 DROP_TO_STORAGE -> {
+            case PICK_FROM_INBOUND -> {
                 if (mission.getMaterial() == null) {
+                    yield null;
+                }
+
+                yield "REPLENISHMENT_BOX:" + mission.getMaterial().getMaterialCode();
+            }
+
+            case DROP_TO_CROSS -> {
+                if (agv.getAgvId() == 1) {
                     yield "EMPTY_BOX";
+                }
+
+                if (mission.getMaterial() == null) {
+                    yield null;
+                }
+
+                yield "REPLENISHMENT_BOX:" + mission.getMaterial().getMaterialCode();
+            }
+
+            case PICK_FROM_CROSS -> {
+                if (agv.getAgvId() == 1) {
+                    if (mission.getMaterial() == null) {
+                        yield null;
+                    }
+
+                    yield "REPLENISHMENT_BOX:" + mission.getMaterial().getMaterialCode();
+                }
+
+                yield "EMPTY_BOX";
+            }
+
+            case DROP_TO_STORAGE -> {
+                if (mission.getMaterial() == null) {
+                    yield null;
                 }
 
                 yield "REPLENISHMENT_BOX:" + mission.getMaterial().getMaterialCode();
@@ -158,6 +196,15 @@ public class SimulationApiService {
 
             case PICK_FROM_CONVEYOR,
                  DROP_TO_FINISHED_BOX_STORAGE -> {
+                if (mission.getMaterial() == null) {
+                    yield null;
+                }
+
+                yield mission.getMaterial().getMaterialCode();
+            }
+
+            case PICK_FROM_FINISHED_BOX_STORAGE,
+                 DROP_TO_OUTBOUND -> {
                 if (mission.getProduct() == null) {
                     yield null;
                 }
@@ -168,13 +215,30 @@ public class SimulationApiService {
             case PICK_EMPTY_BOX,
                  DROP_EMPTY_BOX -> "EMPTY_BOX";
 
-            default -> {
-                if (agv.getCargoMaterial() != null) {
-                    yield "MATERIAL_BOX:" + agv.getCargoMaterial().getMaterialCode();
-                }
+            default -> null;
+        };
+    }
 
-                yield null;
-            }
+    private String resolveActualCargo(Agv agv) {
+        if (agv == null) {
+            return null;
+        }
+
+        if (agv.getCargoType() == null) {
+            return null;
+        }
+
+        return switch (agv.getCargoType()) {
+
+            case NONE -> null;
+
+            case EMPTY_BOX -> "EMPTY_BOX";
+
+            case MATERIAL -> agv.getCargoMaterial() == null
+                    ? null
+                    : agv.getCargoMaterial().getMaterialCode();
+
+            case FINISHED_BOX -> "PRODUCT_BOX";
         };
     }
 

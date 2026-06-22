@@ -26,7 +26,8 @@ public class MarkerResolveService {
             case PICK_FROM_CONVEYOR ->
                     resolveZoneMarker("CONVEYOR_END");
 
-            case DROP_TO_FINISHED_BOX_STORAGE ->
+            case DROP_TO_FINISHED_BOX_STORAGE,
+                 PICK_FROM_FINISHED_BOX_STORAGE ->
                     resolveProductBoxMarker(mission);
 
             case PICK_FROM_INBOUND ->
@@ -35,8 +36,18 @@ public class MarkerResolveService {
             case DROP_TO_OUTBOUND ->
                     resolveZoneMarker("OUTBOUND");
 
-            case PICK_FROM_CROSS, DROP_TO_CROSS ->
+            case PICK_FROM_CROSS,
+                 DROP_TO_CROSS ->
                     resolveZoneMarker("CROSS_ZONE");
+
+            case PICK_EMPTY_BOX ->
+                    resolveZoneMarker("MATERIAL_BOX_STORAGE");
+
+            case DROP_EMPTY_BOX ->
+                    resolveZoneMarker("OUTBOUND");
+
+            case DROP_TO_STORAGE ->
+                    resolveZoneMarker("MATERIAL_BOX_STORAGE");
 
             case RETURN_TO_BASE ->
                     resolveReturnBaseMarker(mission);
@@ -47,16 +58,44 @@ public class MarkerResolveService {
     }
 
     public Integer resolveCargoMarkerId(Mission mission) {
+        MissionType type = mission.getMissionType();
 
-        if (mission.getMaterial() != null) {
-            return resolveMaterialBoxMarker(mission);
-        }
+        return switch (type) {
 
-        if (mission.getProduct() != null) {
-            return resolveProductBoxMarker(mission);
-        }
+            case PICK_EMPTY_BOX,
+                 DROP_EMPTY_BOX -> {
+                if (mission.getMaterial() != null) {
+                    yield resolveMaterialBoxMarker(mission);
+                }
 
-        return null;
+                if (mission.getProduct() != null) {
+                    yield resolveProductBoxMarker(mission);
+                }
+
+                yield null;
+            }
+
+            case PICK_FROM_FINISHED_BOX_STORAGE,
+                 DROP_TO_OUTBOUND -> {
+                if (mission.getProduct() == null) {
+                    yield null;
+                }
+
+                yield resolveProductBoxMarker(mission);
+            }
+
+            default -> {
+                if (mission.getMaterial() != null) {
+                    yield resolveMaterialBoxMarker(mission);
+                }
+
+                if (mission.getProduct() != null) {
+                    yield resolveProductBoxMarker(mission);
+                }
+
+                yield null;
+            }
+        };
     }
 
     private Integer resolveMaterialBoxMarker(Mission mission) {

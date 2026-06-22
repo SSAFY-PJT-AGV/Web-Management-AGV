@@ -79,13 +79,13 @@
             <CommandPanel />
           </PanelFrame>
 
-          <PanelFrame title="INVENTORY" class="flex-[2] min-h-0 overflow-hidden">
+          <PanelFrame title="INVENTORY" class="h-[200px] shrink-0 overflow-hidden relative">
             <InventoryPanel :items="inventory.items" />
           </PanelFrame>
 
           <PanelFrame
             title="AI RECOMMENDATION"
-            class="h-[160px] min-h-0 overflow-hidden relative"
+            class="h-[300px] shrink-0 overflow-hidden relative"
           >
             <template #action>
               <button
@@ -111,7 +111,10 @@
 
           <PanelFrame title="OUTBOUND QUEUE" class="flex-1 min-h-0 overflow-hidden">
             <div class="h-full min-h-0 overflow-y-auto pr-1">
-              <OutboundQueue :items="activeTasks" />
+              <OutboundQueue
+                :items="activeTasks"
+                @cancelled="refreshDashboard"
+              />
             </div>
           </PanelFrame>
         </aside>

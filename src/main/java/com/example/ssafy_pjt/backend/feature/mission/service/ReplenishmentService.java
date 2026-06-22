@@ -52,6 +52,7 @@ public class ReplenishmentService {
 
         int sequence = getNextSequenceOrder();
 
+        // AGV02: 입고 구역에서 보급 자재 상자 픽업
         createMission(
                 MissionType.PICK_FROM_INBOUND,
                 material,
@@ -61,6 +62,7 @@ public class ReplenishmentService {
                 sequence++
         );
 
+        // AGV02: 보급 자재 상자를 교차구역에 하역
         createMission(
                 MissionType.DROP_TO_CROSS,
                 material,
@@ -70,24 +72,37 @@ public class ReplenishmentService {
                 sequence++
         );
 
+        // AGV01: 자재 보관 구역에서 기존 빈 자재 상자 픽업
+        createMission(
+                MissionType.PICK_EMPTY_BOX,
+                material,
+                0,
+                materialStorage,
+                null,
+                sequence++
+        );
+
+        // AGV01: 빈 자재 상자를 교차구역에 하역
         createMission(
                 MissionType.DROP_TO_CROSS,
-                null,
+                material,
                 0,
                 materialStorage,
                 crossZone,
                 sequence++
         );
 
+        // AGV01: 교차구역에서 보급 자재 상자 픽업
         createMission(
                 MissionType.PICK_FROM_CROSS,
                 material,
                 replenishQuantity,
                 crossZone,
-                null,
+                materialStorage,
                 sequence++
         );
 
+        // AGV01: 보급 자재 상자를 자재 보관 구역에 하역
         createMission(
                 MissionType.DROP_TO_STORAGE,
                 material,
@@ -97,18 +112,20 @@ public class ReplenishmentService {
                 sequence++
         );
 
+        // AGV02: 교차구역에서 AGV01이 놓은 빈 자재 상자 회수
         createMission(
-                MissionType.PICK_EMPTY_BOX,
-                null,
+                MissionType.PICK_FROM_CROSS,
+                material,
                 0,
                 crossZone,
-                null,
+                outbound,
                 sequence++
         );
 
+        // AGV02: 빈 자재 상자를 입출고 구역에 반납
         createMission(
                 MissionType.DROP_EMPTY_BOX,
-                null,
+                material,
                 0,
                 crossZone,
                 outbound,
