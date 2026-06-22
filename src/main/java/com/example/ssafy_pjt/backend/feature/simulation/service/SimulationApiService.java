@@ -130,19 +130,52 @@ public class SimulationApiService {
     }
 
     private String resolvePayload(Agv agv, Mission mission) {
-        if (agv.getCargoMaterial() != null) {
-            return agv.getCargoMaterial().getMaterialCode();
+        if (mission == null) {
+            return null;
         }
 
-        if (mission != null && mission.getMaterial() != null) {
-            return mission.getMaterial().getMaterialCode();
-        }
+        return switch (mission.getMissionType()) {
 
-        if (mission != null && mission.getProduct() != null) {
-            return mission.getProduct().getProductType().name();
-        }
+            case PICK_FROM_STORAGE,
+                 DROP_TO_CONVEYOR -> {
+                if (mission.getMaterial() == null) {
+                    yield null;
+                }
 
-        return null;
+                yield "MATERIAL_BOX:" + mission.getMaterial().getMaterialCode();
+            }
+
+            case PICK_FROM_INBOUND,
+                 DROP_TO_CROSS,
+                 PICK_FROM_CROSS,
+                 DROP_TO_STORAGE -> {
+                if (mission.getMaterial() == null) {
+                    yield "EMPTY_BOX";
+                }
+
+                yield "REPLENISHMENT_BOX:" + mission.getMaterial().getMaterialCode();
+            }
+
+            case PICK_FROM_CONVEYOR,
+                 DROP_TO_FINISHED_BOX_STORAGE -> {
+                if (mission.getProduct() == null) {
+                    yield null;
+                }
+
+                yield "PRODUCT_BOX:" + mission.getProduct().getProductType().name();
+            }
+
+            case PICK_EMPTY_BOX,
+                 DROP_EMPTY_BOX -> "EMPTY_BOX";
+
+            default -> {
+                if (agv.getCargoMaterial() != null) {
+                    yield "MATERIAL_BOX:" + agv.getCargoMaterial().getMaterialCode();
+                }
+
+                yield null;
+            }
+        };
     }
 
     private String resolveDebug(
