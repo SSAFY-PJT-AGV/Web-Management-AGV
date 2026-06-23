@@ -21,37 +21,37 @@ public class AgvHardwareTestController {
 
     @PostMapping("/agv/1/pick-from-storage")
     public String agv01PickFromStorage() {
-        send(1, 1L, MissionType.PICK_FROM_STORAGE, 101, "CHIP");
+        send(1, 1L, MissionType.PICK_FROM_STORAGE, 101, 3);
         return "AGV01 PICK_FROM_STORAGE 전송 완료";
     }
 
     @PostMapping("/agv/1/drop-to-conveyor")
     public String agv01DropToConveyor() {
-        send(1, 1L, MissionType.DROP_TO_CONVEYOR, 201, "CHIP");
+        send(1, 1L, MissionType.DROP_TO_CONVEYOR, 201, 3);
         return "AGV01 DROP_TO_CONVEYOR 전송 완료";
     }
 
     @PostMapping("/agv/1/pick-empty-box")
     public String agv01PickEmptyBox() {
-        send(1, 1L, MissionType.PICK_EMPTY_BOX, 301, "EMPTY");
+        send(1, 1L, MissionType.PICK_EMPTY_BOX, 301, null);
         return "AGV01 PICK_EMPTY_BOX 전송 완료";
     }
 
     @PostMapping("/agv/1/drop-to-cross")
     public String agv01DropToCross() {
-        send(1, 1L, MissionType.DROP_TO_CROSS, 401, "EMPTY");
+        send(1, 1L, MissionType.DROP_TO_CROSS, 401, null);
         return "AGV01 DROP_TO_CROSS 전송 완료";
     }
 
     @PostMapping("/agv/1/pick-from-cross")
     public String agv01PickFromCross() {
-        send(1, 1L, MissionType.PICK_FROM_CROSS, 401, "EMPTY");
+        send(1, 1L, MissionType.PICK_FROM_CROSS, 401, null);
         return "AGV01 PICK_FROM_CROSS 전송 완료";
     }
 
     @PostMapping("/agv/1/drop-to-storage")
     public String agv01DropToStorage() {
-        send(1, 1L, MissionType.DROP_TO_STORAGE, 102, "EMPTY");
+        send(1, 1L, MissionType.DROP_TO_STORAGE, 102, null);
         return "AGV01 DROP_TO_STORAGE 전송 완료";
     }
 
@@ -59,37 +59,37 @@ public class AgvHardwareTestController {
 
     @PostMapping("/agv/2/pick-from-conveyor")
     public String agv02PickFromConveyor() {
-        send(2, 2L, MissionType.PICK_FROM_CONVEYOR, 202, "CHIP");
+        send(2, 2L, MissionType.PICK_FROM_CONVEYOR, 202, 3);
         return "AGV02 PICK_FROM_CONVEYOR 전송 완료";
     }
 
     @PostMapping("/agv/2/drop-to-finished-box-storage")
     public String agv02DropToFinishedBoxStorage() {
-        send(2, 2L, MissionType.DROP_TO_FINISHED_BOX_STORAGE, 501, "CHIP");
+        send(2, 2L, MissionType.DROP_TO_FINISHED_BOX_STORAGE, 501, 3);
         return "AGV02 DROP_TO_FINISHED_BOX_STORAGE 전송 완료";
     }
 
     @PostMapping("/agv/2/pick-from-inbound")
     public String agv02PickFromInbound() {
-        send(2, 2L, MissionType.PICK_FROM_INBOUND, 601, "EMPTY");
+        send(2, 2L, MissionType.PICK_FROM_INBOUND, 601, null);
         return "AGV02 PICK_FROM_INBOUND 전송 완료";
     }
 
     @PostMapping("/agv/2/drop-to-cross")
     public String agv02DropToCross() {
-        send(2, 2L, MissionType.DROP_TO_CROSS, 401, "EMPTY");
+        send(2, 2L, MissionType.DROP_TO_CROSS, 401, null);
         return "AGV02 DROP_TO_CROSS 전송 완료";
     }
 
     @PostMapping("/agv/2/pick-empty-box")
     public String agv02PickEmptyBox() {
-        send(2, 2L, MissionType.PICK_EMPTY_BOX, 502, "EMPTY");
+        send(2, 2L, MissionType.PICK_EMPTY_BOX, 502, null);
         return "AGV02 PICK_EMPTY_BOX 전송 완료";
     }
 
     @PostMapping("/agv/2/drop-empty-box")
     public String agv02DropEmptyBox() {
-        send(2, 2L, MissionType.DROP_EMPTY_BOX, 602, "EMPTY");
+        send(2, 2L, MissionType.DROP_EMPTY_BOX, 602, null);
         return "AGV02 DROP_EMPTY_BOX 전송 완료";
     }
 
@@ -117,8 +117,8 @@ public class AgvHardwareTestController {
 
     @PostMapping("/replenishment/start")
     public String startReplenishmentMission() {
-        send(1, 999L, MissionType.DROP_TO_CROSS, 401, "EMPTY");
-        send(2, 999L, MissionType.PICK_FROM_CROSS, 401, "EMPTY");
+        send(1, 999L, MissionType.DROP_TO_CROSS, 401, null);
+        send(2, 999L, MissionType.PICK_FROM_CROSS, 401, null);
 
         return "재고부족/교차구역 테스트 미션 전송 완료";
     }
@@ -128,7 +128,7 @@ public class AgvHardwareTestController {
             Long taskId,
             MissionType command,
             Integer destination,
-            String cargo
+            Integer cargo
     ) {
         CommandAssignMessage message = CommandAssignMessage.builder()
                 .messageType("COMMAND_ASSIGN")

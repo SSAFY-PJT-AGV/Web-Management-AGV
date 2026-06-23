@@ -70,8 +70,6 @@ public class AgvHandler extends TextWebSocketHandler {
 
             agvSessionHandler.addSession(agvId, session);
             agvService.markConnected(agvId);
-            missionDispatchService.assignCreatedMissionsToAgvQueues();
-            missionDispatchService.dispatchNextMission(agvId);
 
             AgvStatusMessage statusMessage =
                     objectMapper.treeToValue(
@@ -140,7 +138,6 @@ public class AgvHandler extends TextWebSocketHandler {
         System.out.println("located     = " + message.getLocated());
         System.out.println("destination = " + message.getDestination());
         System.out.println("cargo       = " + message.getCargo());
-        System.out.println("isCW        = " + message.getIsCW());
         System.out.println("hasImage    = " + message.getHasImage());
         System.out.println("image       = "
                 + (message.getImage() == null
@@ -159,7 +156,6 @@ public class AgvHandler extends TextWebSocketHandler {
         data.put("located", message.getLocated());
         data.put("destination", message.getDestination());
         data.put("cargo", message.getCargo());
-        data.put("isCW", message.getIsCW());
         data.put("timestamp", message.getTimestamp());
 
         Map<String, Object> payload = new HashMap<>();
@@ -172,65 +168,56 @@ public class AgvHandler extends TextWebSocketHandler {
     private void handleImageMessage(
             WebSocketSession session,
             AgvStatusMessage message
-    ) throws Exception {
+    ) {
 
         System.out.println("[VISION] image received. agvId="
                 + message.getAgvId()
                 + ", base64Length="
                 + message.getImage().length());
 
-        try {
-            ArucoResultMessage arucoResult =
-                    arucoService.detectFromBase64(
-                            message.getAgvId(),
-                            message.getImage()
-                    );
+        arucoService.submitFrame(
+                message.getAgvId(),
+                message.getImage(),
+                arucoResult -> {
+                    try {
+                        if (arucoResult == null) {
+                            return;
+                        }
 
-            if (arucoResult != null) {
-                System.out.println("[VISION RESULT] agvId="
-                        + arucoResult.getAgvId()
-                        + ", detected="
-                        + arucoResult.getDetected()
-                        + ", markerCount="
-                        + arucoResult.getMarkerCount());
+                        System.out.println("[VISION RESULT] agvId="
+                                + arucoResult.getAgvId()
+                                + ", detected="
+                                + arucoResult.getDetected()
+                                + ", markerCount="
+                                + arucoResult.getMarkerCount());
 
-                if (arucoResult.getMarkers() != null) {
-                    for (ArucoResultMessage.MarkerInfo marker : arucoResult.getMarkers()) {
-                        System.out.println("  markerId="
-                                + marker.getMarkerId()
-                                + ", distance="
-                                + marker.getDistance()
-                                + ", yaw="
-                                + marker.getYaw()
-                                + ", pitch="
-                                + marker.getPitch()
-                                + ", centered="
-                                + marker.getCentered());
+                        if (arucoResult.getMarkers() != null) {
+                            for (ArucoResultMessage.MarkerInfo marker : arucoResult.getMarkers()) {
+                                System.out.println("  markerId="
+                                        + marker.getMarkerId()
+                                        + ", distance="
+                                        + marker.getDistance()
+                                        + ", yaw="
+                                        + marker.getYaw()
+                                        + ", pitch="
+                                        + marker.getPitch()
+                                        + ", centered="
+                                        + marker.getCentered());
+                            }
+                        }
+
+                        synchronized (session) {
+                            send(session, arucoResult);
+                        }
+
+                    } catch (Exception e) {
+                        System.out.println("[VISION SEND ERROR] agvId="
+                                + message.getAgvId()
+                                + ", reason="
+                                + e.getMessage());
                     }
                 }
-
-                send(session, arucoResult);
-
-            } else {
-                System.out.println("[VISION FAIL] marker not detected. agvId="
-                        + message.getAgvId());
-
-                send(session, new ErrorMessage(
-                        "ERROR",
-                        message.getAgvId(),
-                        "마커 인식 실패"
-                ));
-            }
-
-        } catch (Exception e) {
-            System.out.println("[VISION ERROR] " + e.getMessage());
-
-            send(session, new ErrorMessage(
-                    "ERROR",
-                    message.getAgvId(),
-                    "이미지 처리 실패"
-            ));
-        }
+        );
     }
 
     private void handleDoneEvent(

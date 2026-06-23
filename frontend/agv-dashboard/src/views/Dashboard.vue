@@ -79,11 +79,31 @@
             <CommandPanel />
           </PanelFrame>
 
-          <PanelFrame title="INVENTORY" class="flex-[2] min-h-0 overflow-hidden">
+          <PanelFrame title="INVENTORY" class="h-[200px] shrink-0 overflow-hidden relative">
             <InventoryPanel :items="inventory.items" />
           </PanelFrame>
 
-          <PanelFrame title="AI RECOMMENDATION" class="h-[160px] min-h-0 overflow-hidden relative">
+          <PanelFrame
+            title="AI RECOMMENDATION"
+            class="h-[300px] shrink-0 overflow-hidden relative"
+          >
+            <template #action>
+              <button
+                class="
+                  border border-[var(--accent)]
+                  px-3 py-1
+                  text-[0.6rem]
+                  tracking-[0.18em]
+                  text-[var(--accent)]
+                  hover:bg-[var(--accent)]
+                  hover:text-black
+                "
+                @click="showAiDetail = true"
+              >
+                MORE
+              </button>
+            </template>
+
             <div class="absolute inset-x-4 top-[54px] bottom-3 overflow-y-auto pr-2">
               <AiRecommendation :items="rec.items" />
             </div>
@@ -91,11 +111,23 @@
 
           <PanelFrame title="OUTBOUND QUEUE" class="flex-1 min-h-0 overflow-hidden">
             <div class="h-full min-h-0 overflow-y-auto pr-1">
-              <OutboundQueue :items="activeTasks" />
+              <OutboundQueue
+                :items="activeTasks"
+                @cancelled="refreshDashboard"
+              />
             </div>
           </PanelFrame>
         </aside>
       </section>
+
+      <AiDetailPanel
+              v-if="showAiDetail"
+              :agvs="agv.items"
+              :missions="mission.items"
+              :inventories="inventory.items"
+              :recommendations="rec.items"
+              @close="showAiDetail = false"
+            />
   </main>
 </template>
 
@@ -113,9 +145,9 @@ import FactoryMap from '../components/map/FactoryMap.vue'
 import CommandPanel from '../components/command/CommandPanel.vue'
 import InventoryPanel from '../components/inventory/InventoryPanel.vue'
 import AiRecommendation from '../components/ai/AiRecommendation.vue'
+import AiDetailPanel from '../components/ai/AiDetailPanel.vue'
 import EventLog from '../components/event/EventLog.vue'
 import OutboundQueue from '../components/outbound/OutboundQueue.vue'
-import { useTaskStore } from '../stores/taskStore'
 
 import { useAgvStore } from '../stores/agvStore'
 import { useMissionStore } from '../stores/missionStore'
@@ -123,11 +155,14 @@ import { useInventoryStore } from '../stores/inventoryStore'
 import { useRecommendationStore } from '../stores/recommendationStore'
 import { useEventStore } from '../stores/eventStore'
 import { useMapStore } from '../stores/mapStore'
+import { useTaskStore } from '../stores/taskStore'
 
 import { connectDashboardSocket } from '../websocket/dashboardSocket'
 import { connectFakeAgv } from '../websocket/fakeAgvSocket'
 
+
 const connected = ref(false)
+const showAiDetail = ref(false)
 let dashboardWs = null
 
 const agv = useAgvStore()
@@ -235,10 +270,11 @@ onMounted(async () => {
 
       switch (msg.type) {
         case 'AGV_STATUS':
+        case 'AGV_STATUS_UPDATED':
           agv.update(msg.data)
           map.updateAgv(msg.data)
 
-          agv.load()
+          mission.load().catch(console.error)
           break
 
         case 'TASK_REFRESH':
@@ -250,16 +286,19 @@ onMounted(async () => {
         case 'MISSION_REFRESH':
           Promise.allSettled([
             mission.load(),
-            agv.load()
+            agv.load(),
+            map.load()
           ])
-          break
+            .then(() => {
+              map.setAgvs(agv.items)
 
-        case 'MAP_REFRESH':
-          Promise.allSettled([
-            map.load(),
-            agv.load()
-          ])
-          brea
+              console.log('[MISSION AFTER LOAD]', mission.items)
+              console.log('[AGV AFTER LOAD]', agv.items)
+              console.log('[AGV01 AFTER LOAD]', agv01Missions.value)
+              console.log('[AGV02 AFTER LOAD]', agv02Missions.value)
+            })
+            .catch(console.error)
+          break
 
         case 'INVENTORY_REFRESH':
           inventory.load().catch(console.error)
@@ -271,6 +310,10 @@ onMounted(async () => {
 
         case 'AI_REFRESH':
           rec.load().catch(console.error)
+          break
+
+        case 'MAP_REFRESH':
+          map.load().catch(console.error)
           break
 
         default:

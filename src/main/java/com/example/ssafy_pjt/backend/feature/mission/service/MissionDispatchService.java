@@ -10,6 +10,7 @@ import com.example.ssafy_pjt.backend.feature.mission.enums.MissionStatus;
 import com.example.ssafy_pjt.backend.feature.mission.enums.MissionType;
 import com.example.ssafy_pjt.backend.feature.mission.repository.MissionRepository;
 import com.example.ssafy_pjt.backend.feature.reservation.service.ReservationService;
+import com.example.ssafy_pjt.backend.feature.task.enums.TaskStatus;
 import com.example.ssafy_pjt.backend.websocket.dto.CommandAssignMessage;
 import com.example.ssafy_pjt.backend.websocket.sender.AgvCommandSender;
 import com.example.ssafy_pjt.backend.websocket.sender.DashboardBroadcastService;
@@ -134,6 +135,11 @@ public class MissionDispatchService {
             return null;
         }
 
+        if (mission.getTask() != null
+                && mission.getTask().getStatus() == TaskStatus.READY) {
+            mission.getTask().setStatus(TaskStatus.RUNNING);
+        }
+
         mission.setStatus(MissionStatus.IN_PROGRESS);
 
         dashboardBroadcastService.missionRefresh();
@@ -208,6 +214,7 @@ public class MissionDispatchService {
 
             case PICK_FROM_CONVEYOR,
                  DROP_TO_FINISHED_BOX_STORAGE,
+                 PICK_FROM_FINISHED_BOX_STORAGE,
                  PICK_FROM_INBOUND,
                  DROP_TO_OUTBOUND,
                  DROP_EMPTY_BOX -> AgvRole.COLLECT;
@@ -289,6 +296,7 @@ public class MissionDispatchService {
 
     private boolean sendCommandAssign(Integer agvId, Mission mission) {
         Integer destination = markerResolveService.resolveDestinationMarkerId(mission);
+        Integer cargoMarkerId = markerResolveService.resolveCargoMarkerId(mission);
 
         CommandAssignMessage message = CommandAssignMessage.builder()
                 .messageType("COMMAND_ASSIGN")
@@ -297,11 +305,7 @@ public class MissionDispatchService {
                 .commandId(mission.getMissionId())
                 .command(mission.getMissionType())
                 .destination(destination)
-                .cargo(
-                        mission.getMaterial() == null
-                                ? null
-                                : mission.getMaterial().getMaterialCode()
-                )
+                .cargo(cargoMarkerId)
                 .build();
 
         try {

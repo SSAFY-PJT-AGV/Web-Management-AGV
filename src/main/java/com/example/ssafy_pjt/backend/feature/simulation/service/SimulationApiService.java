@@ -7,6 +7,8 @@ import com.example.ssafy_pjt.backend.feature.marker.enums.MarkerType;
 import com.example.ssafy_pjt.backend.feature.marker.repository.ArucoMarkerRepository;
 import com.example.ssafy_pjt.backend.feature.marker.service.MarkerResolveService;
 import com.example.ssafy_pjt.backend.feature.mission.entity.Mission;
+import com.example.ssafy_pjt.backend.feature.mission.enums.MissionType;
+import com.example.ssafy_pjt.backend.feature.mission.repository.MissionRepository;
 import com.example.ssafy_pjt.backend.feature.simulation.dto.SimulationAgvResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -130,19 +132,114 @@ public class SimulationApiService {
     }
 
     private String resolvePayload(Agv agv, Mission mission) {
-        if (agv.getCargoMaterial() != null) {
-            return agv.getCargoMaterial().getMaterialCode();
+
+        String actualCargo = resolveActualCargo(agv);
+
+        if (actualCargo != null) {
+            return actualCargo;
         }
 
-        if (mission != null && mission.getMaterial() != null) {
-            return mission.getMaterial().getMaterialCode();
+        if (mission == null) {
+            return null;
         }
 
-        if (mission != null && mission.getProduct() != null) {
-            return mission.getProduct().getProductType().name();
+        return switch (mission.getMissionType()) {
+
+            case PICK_FROM_STORAGE,
+                 DROP_TO_CONVEYOR -> {
+                if (mission.getMaterial() == null) {
+                    yield null;
+                }
+
+                yield mission.getMaterial().getMaterialCode();
+            }
+
+            case PICK_FROM_INBOUND -> {
+                if (mission.getMaterial() == null) {
+                    yield null;
+                }
+
+                yield "REPLENISHMENT_BOX:" + mission.getMaterial().getMaterialCode();
+            }
+
+            case DROP_TO_CROSS -> {
+                if (agv.getAgvId() == 1) {
+                    yield "EMPTY_BOX";
+                }
+
+                if (mission.getMaterial() == null) {
+                    yield null;
+                }
+
+                yield "REPLENISHMENT_BOX:" + mission.getMaterial().getMaterialCode();
+            }
+
+            case PICK_FROM_CROSS -> {
+                if (agv.getAgvId() == 1) {
+                    if (mission.getMaterial() == null) {
+                        yield null;
+                    }
+
+                    yield "REPLENISHMENT_BOX:" + mission.getMaterial().getMaterialCode();
+                }
+
+                yield "EMPTY_BOX";
+            }
+
+            case DROP_TO_STORAGE -> {
+                if (mission.getMaterial() == null) {
+                    yield null;
+                }
+
+                yield "REPLENISHMENT_BOX:" + mission.getMaterial().getMaterialCode();
+            }
+
+            case PICK_FROM_CONVEYOR,
+                 DROP_TO_FINISHED_BOX_STORAGE -> {
+                if (mission.getMaterial() == null) {
+                    yield null;
+                }
+
+                yield mission.getMaterial().getMaterialCode();
+            }
+
+            case PICK_FROM_FINISHED_BOX_STORAGE,
+                 DROP_TO_OUTBOUND -> {
+                if (mission.getProduct() == null) {
+                    yield null;
+                }
+
+                yield "PRODUCT_BOX:" + mission.getProduct().getProductType().name();
+            }
+
+            case PICK_EMPTY_BOX,
+                 DROP_EMPTY_BOX -> "EMPTY_BOX";
+
+            default -> null;
+        };
+    }
+
+    private String resolveActualCargo(Agv agv) {
+        if (agv == null) {
+            return null;
         }
 
-        return null;
+        if (agv.getCargoType() == null) {
+            return null;
+        }
+
+        return switch (agv.getCargoType()) {
+
+            case NONE -> null;
+
+            case EMPTY_BOX -> "EMPTY_BOX";
+
+            case MATERIAL -> agv.getCargoMaterial() == null
+                    ? null
+                    : agv.getCargoMaterial().getMaterialCode();
+
+            case FINISHED_BOX -> "PRODUCT_BOX";
+        };
     }
 
     private String resolveDebug(

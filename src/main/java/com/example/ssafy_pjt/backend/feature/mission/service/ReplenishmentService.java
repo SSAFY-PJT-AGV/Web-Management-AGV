@@ -22,6 +22,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ReplenishmentService {
 
+    private static final int REPLENISHMENT_BOX_QUANTITY = 4;
+
     private final MissionRepository missionRepository;
     private final MaterialRepository materialRepository;
     private final ZoneRepository zoneRepository;
@@ -29,8 +31,12 @@ public class ReplenishmentService {
 
     @Transactional
     public void createReplenishmentMissions(String materialCode, int quantity) {
+        int replenishQuantity = REPLENISHMENT_BOX_QUANTITY;
+
         Material material = materialRepository.findByMaterialCode(materialCode)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 자재입니다: " + materialCode));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "존재하지 않는 자재입니다: " + materialCode
+                ));
 
         Zone inbound = zoneRepository.findByZoneName("INBOUND")
                 .orElseThrow(() -> new IllegalArgumentException("입고 구역이 없습니다."));
@@ -46,16 +52,85 @@ public class ReplenishmentService {
 
         int sequence = getNextSequenceOrder();
 
-        createMission(MissionType.PICK_FROM_INBOUND, material, quantity, inbound, null, sequence++);
-        createMission(MissionType.DROP_TO_CROSS, material, quantity, inbound, crossZone, sequence++);
-        createMission(MissionType.DROP_TO_CROSS, null, 0, materialStorage, crossZone, sequence++);
-        createMission(MissionType.PICK_FROM_CROSS, material, quantity, crossZone, null, sequence++);
-        createMission(MissionType.DROP_TO_STORAGE, material, quantity, crossZone, materialStorage, sequence++);
-        createMission(MissionType.PICK_EMPTY_BOX, null, 0, crossZone, null, sequence++);
-        createMission(MissionType.DROP_EMPTY_BOX, null, 0, crossZone, outbound, sequence);
-    }
+        // AGV02: 입고 구역에서 보급 자재 상자 픽업
+        createMission(
+                MissionType.PICK_FROM_INBOUND,
+                material,
+                replenishQuantity,
+                inbound,
+                null,
+                sequence++
+        );
 
-    private record MissionScore(Mission mission, int score) {
+        // AGV02: 보급 자재 상자를 교차구역에 하역
+        createMission(
+                MissionType.DROP_TO_CROSS,
+                material,
+                replenishQuantity,
+                inbound,
+                crossZone,
+                sequence++
+        );
+
+        // AGV01: 자재 보관 구역에서 기존 빈 자재 상자 픽업
+        createMission(
+                MissionType.PICK_EMPTY_BOX,
+                material,
+                0,
+                materialStorage,
+                null,
+                sequence++
+        );
+
+        // AGV01: 빈 자재 상자를 교차구역에 하역
+        createMission(
+                MissionType.DROP_TO_CROSS,
+                material,
+                0,
+                materialStorage,
+                crossZone,
+                sequence++
+        );
+
+        // AGV01: 교차구역에서 보급 자재 상자 픽업
+        createMission(
+                MissionType.PICK_FROM_CROSS,
+                material,
+                replenishQuantity,
+                crossZone,
+                materialStorage,
+                sequence++
+        );
+
+        // AGV01: 보급 자재 상자를 자재 보관 구역에 하역
+        createMission(
+                MissionType.DROP_TO_STORAGE,
+                material,
+                replenishQuantity,
+                crossZone,
+                materialStorage,
+                sequence++
+        );
+
+        // AGV02: 교차구역에서 AGV01이 놓은 빈 자재 상자 회수
+        createMission(
+                MissionType.PICK_FROM_CROSS,
+                material,
+                0,
+                crossZone,
+                outbound,
+                sequence++
+        );
+
+        // AGV02: 빈 자재 상자를 입출고 구역에 반납
+        createMission(
+                MissionType.DROP_EMPTY_BOX,
+                material,
+                0,
+                crossZone,
+                outbound,
+                sequence
+        );
     }
 
     private void createMission(

@@ -13,6 +13,7 @@
       "
     >
 
+
       <!-- Header -->
       <div
         class="
@@ -22,15 +23,34 @@
         "
       >
 
-        <strong
-          class="
-            text-[0.75rem]
-            tracking-[0.12em]
-            text-[#FACC15]
-          "
-        >
-          {{ item.title }}
-        </strong>
+        <div class="flex items-center justify-between">
+
+          <div>
+            <strong
+              class="
+                text-[0.75rem]
+                tracking-[0.12em]
+                text-[#FACC15]
+              "
+            >
+              {{ item.title }}
+            </strong>
+
+            <div
+              v-if="item.targetKey"
+              class="
+                mt-1
+                text-[0.6rem]
+                tracking-[0.12em]
+                text-[var(--muted)]
+              "
+            >
+              TARGET {{ item.targetKey }}
+            </div>
+          </div>
+
+        </div>
+
 
       </div>
 
@@ -63,11 +83,17 @@
       NO AI RECOMMENDATION
     </div>
 
+
+
   </div>
 </template>
 
 
 <script setup>
+const emit = defineEmits([
+  'open-detail'
+])
+
 defineProps({
   items: {
     type: Array,

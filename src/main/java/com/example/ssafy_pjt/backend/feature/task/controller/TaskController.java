@@ -21,6 +21,13 @@ public class TaskController {
         return productionTaskService.createTask(request);
     }
 
+    @PostMapping("/{taskId}/cancel")
+    public void cancelTask(
+            @PathVariable Long taskId
+    ) {
+        productionTaskService.cancelTask(taskId);
+    }
+
     @GetMapping
     public List<TaskResponse> getTasks() {
         return productionTaskService.getTasks();

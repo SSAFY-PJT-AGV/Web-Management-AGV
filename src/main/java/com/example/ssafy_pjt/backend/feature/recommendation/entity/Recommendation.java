@@ -33,6 +33,9 @@ public class Recommendation {
     @Column(columnDefinition = "TEXT")
     private String reason;
 
+    @Column(name = "target_key", length = 50)
+    private String targetKey;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 }

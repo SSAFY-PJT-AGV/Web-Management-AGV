@@ -27,5 +27,5 @@ public class CommandAssignMessage {
     // 목표 ArUco marker ID
     private Integer destination;
 
-    private String cargo;
+    private Integer cargo;
 }

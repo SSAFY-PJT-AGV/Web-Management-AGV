@@ -1,5 +1,8 @@
 package com.example.ssafy_pjt.backend.feature.task.service;
 
+import com.example.ssafy_pjt.backend.feature.inventory.entity.Inventory;
+import com.example.ssafy_pjt.backend.feature.inventory.repository.InventoryRepository;
+import com.example.ssafy_pjt.backend.feature.material.entity.Material;
 import com.example.ssafy_pjt.backend.feature.material.entity.ProductMaterial;
 import com.example.ssafy_pjt.backend.feature.material.repository.ProductMaterialRepository;
 import com.example.ssafy_pjt.backend.feature.mission.entity.Mission;
@@ -7,6 +10,7 @@ import com.example.ssafy_pjt.backend.feature.mission.enums.MissionStatus;
 import com.example.ssafy_pjt.backend.feature.mission.enums.MissionType;
 import com.example.ssafy_pjt.backend.feature.mission.repository.MissionRepository;
 import com.example.ssafy_pjt.backend.feature.mission.service.MissionDispatchService;
+import com.example.ssafy_pjt.backend.feature.mission.service.ReplenishmentService;
 import com.example.ssafy_pjt.backend.feature.product.entity.Product;
 import com.example.ssafy_pjt.backend.feature.product.repository.ProductRepository;
 import com.example.ssafy_pjt.backend.feature.task.dto.TaskCreateRequest;
@@ -36,6 +40,8 @@ public class TaskService {
     private final ZoneRepository zoneRepository;
     private final MissionDispatchService missionDispatchService;
     private final DashboardBroadcastService dashboardBroadcastService;
+    private final InventoryRepository inventoryRepository;
+    private final ReplenishmentService replenishmentService;
 
     @Transactional
     public TaskResponse createTask(TaskCreateRequest request) {
@@ -49,7 +55,7 @@ public class TaskService {
                                 ? request.getPriority()
                                 : TaskPriority.NORMAL
                 )
-                .status(TaskStatus.READY)
+                .status(com.example.ssafy_pjt.backend.feature.task.enums.TaskStatus.READY)
                 .build();
 
         ProductionTask savedTask = productionTaskRepository.save(task);
@@ -61,13 +67,12 @@ public class TaskService {
 
         createMissions(savedTask, product);
 
-        // 1. 생성된 CREATED Mission들을 AGV별 작업 큐에 전부 배정
+        checkAndCreateReplenishmentMissions(savedTask);
+
         missionDispatchService.assignCreatedMissionsToAgvQueues();
 
-        // 2. 각 AGV 큐의 첫 번째 Mission만 실제 실행 상태로 전환
         missionDispatchService.dispatchAvailableAgvs();
 
-        // 3. 생산 요청 목록 갱신
         dashboardBroadcastService.taskRefresh();
 
         return new TaskResponse(savedTask);
@@ -87,6 +92,131 @@ public class TaskService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 생산 작업입니다."));
 
         return new TaskResponse(task);
+    }
+
+    @Transactional
+    public void cancelTask(Long taskId) {
+
+        ProductionTask task =
+                productionTaskRepository.findById(taskId)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException("존재하지 않는 작업입니다.")
+                        );
+
+        task.setStatus(TaskStatus.CANCELLED);
+
+        List<Mission> missions =
+                missionRepository.findAll()
+                        .stream()
+                        .filter(m ->
+                                m.getTask() != null &&
+                                        m.getTask()
+                                                .getTaskId()
+                                                .equals(taskId)
+                        )
+                        .toList();
+
+
+        for (Mission mission : missions) {
+
+            if (mission.getStatus() == MissionStatus.COMPLETED) {
+                continue;
+            }
+
+            mission.setStatus(MissionStatus.CANCELLED);
+
+            if (mission.getAgv() != null
+                    && mission.getAgv().getCurrentMission() != null
+                    && mission.getAgv()
+                    .getCurrentMission()
+                    .getMissionId()
+                    .equals(mission.getMissionId())) {
+
+                mission.getAgv().setCurrentMission(null);
+            }
+        }
+
+        dashboardBroadcastService.taskRefresh();
+        dashboardBroadcastService.missionRefresh();
+    }
+
+    private void checkAndCreateReplenishmentMissions(ProductionTask task) {
+        List<ProductMaterial> productMaterials =
+                productMaterialRepository.findByProduct_ProductType(task.getProductType());
+
+        for (ProductMaterial productMaterial : productMaterials) {
+            Material material = productMaterial.getMaterial();
+
+            int requiredQuantity =
+                    productMaterial.getQuantityPerUnit() * task.getQuantity();
+
+            Inventory inventory = findInventoryByMaterial(material);
+
+            int available =
+                    inventory.getCurrentQuantity()
+                            - inventory.getReservedQuantity();
+
+            if (requiredQuantity > available
+                    && !hasActiveReplenishmentMission(material)) {
+
+                replenishmentService.createReplenishmentMissions(
+                        material.getMaterialCode(),
+                        4
+                );
+
+                System.out.println(
+                        "[TASK SHORTAGE] productType=" + task.getProductType()
+                                + ", material=" + material.getMaterialCode()
+                                + ", required=" + requiredQuantity
+                                + ", available=" + available
+                                + ", replenishmentCreated=true"
+                );
+            }
+        }
+    }
+
+    private Inventory findInventoryByMaterial(Material material) {
+        return inventoryRepository.findAll()
+                .stream()
+                .filter(inventory -> inventory.getMaterial() != null)
+                .filter(inventory ->
+                        inventory.getMaterial()
+                                .getMaterialId()
+                                .equals(material.getMaterialId())
+                )
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "재고 정보를 찾을 수 없습니다. material="
+                                + material.getMaterialCode()
+                ));
+    }
+
+    private boolean hasActiveReplenishmentMission(Material material) {
+        return missionRepository.findAll()
+                .stream()
+                .filter(mission -> mission.getMaterial() != null)
+                .filter(mission ->
+                        mission.getMaterial()
+                                .getMaterialId()
+                                .equals(material.getMaterialId())
+                )
+                .filter(mission ->
+                        List.of(
+                                MissionStatus.CREATED,
+                                MissionStatus.ASSIGNED,
+                                MissionStatus.IN_PROGRESS
+                        ).contains(mission.getStatus())
+                )
+                .anyMatch(this::isReplenishmentMission);
+    }
+
+    private boolean isReplenishmentMission(Mission mission) {
+        return List.of(
+                MissionType.PICK_FROM_INBOUND,
+                MissionType.DROP_TO_CROSS,
+                MissionType.PICK_FROM_CROSS,
+                MissionType.DROP_TO_STORAGE
+        ).contains(mission.getMissionType());
     }
 
     private void createMissions(ProductionTask task, Product product) {
@@ -110,6 +240,32 @@ public class TaskService {
 
         int sequence = 1;
 
+        ProductMaterial firstProductMaterial = productMaterials.get(0);
+
+        // AGV02: 빈 완제품 상자 가져오기
+        createMission(
+                task,
+                MissionType.PICK_FROM_INBOUND,
+                firstProductMaterial,
+                product,
+                0,
+                outbound,
+                null,
+                sequence++
+        );
+
+        // AGV02: 빈 완제품 상자를 완제품 보관 구역에 배치
+        createMission(
+                task,
+                MissionType.DROP_EMPTY_BOX,
+                firstProductMaterial,
+                product,
+                0,
+                outbound,
+                finishedBoxStorage,
+                sequence++
+        );
+
         for (ProductMaterial productMaterial : productMaterials) {
             int requiredQuantity =
                     productMaterial.getQuantityPerUnit() * task.getQuantity();
@@ -121,7 +277,7 @@ public class TaskService {
                     product,
                     requiredQuantity,
                     materialStorage,
-                    materialStorage,
+                    null,
                     sequence++
             );
 
@@ -143,7 +299,7 @@ public class TaskService {
                     product,
                     requiredQuantity,
                     conveyorEnd,
-                    conveyorEnd,
+                    null,
                     sequence++
             );
 
@@ -161,45 +317,23 @@ public class TaskService {
 
         createMission(
                 task,
-                MissionType.PICK_FROM_INBOUND,
-                null,
+                MissionType.PICK_FROM_FINISHED_BOX_STORAGE,
+                firstProductMaterial,
                 product,
                 task.getQuantity(),
                 finishedBoxStorage,
-                finishedBoxStorage,
+                null,
                 sequence++
         );
 
         createMission(
                 task,
                 MissionType.DROP_TO_OUTBOUND,
-                null,
+                firstProductMaterial,
                 product,
                 task.getQuantity(),
                 finishedBoxStorage,
                 outbound,
-                sequence++
-        );
-
-        createMission(
-                task,
-                MissionType.PICK_EMPTY_BOX,
-                null,
-                product,
-                task.getQuantity(),
-                outbound,
-                outbound,
-                sequence++
-        );
-
-        createMission(
-                task,
-                MissionType.DROP_EMPTY_BOX,
-                null,
-                product,
-                task.getQuantity(),
-                outbound,
-                finishedBoxStorage,
                 sequence++
         );
     }
@@ -219,15 +353,8 @@ public class TaskService {
         mission.setTask(task);
         mission.setAgv(null);
         mission.setMissionType(missionType);
-
-        // 자재 기반 Mission 목적지 계산용
-        if (productMaterial != null) {
-            mission.setMaterial(productMaterial.getMaterial());
-        }
-
-        // 완제품 보관 Mission marker 11/12/13 계산용
+        mission.setMaterial(productMaterial.getMaterial());
         mission.setProduct(product);
-
         mission.setStatus(MissionStatus.CREATED);
         mission.setSequenceOrder(sequenceOrder);
         mission.setQuantity(quantity);

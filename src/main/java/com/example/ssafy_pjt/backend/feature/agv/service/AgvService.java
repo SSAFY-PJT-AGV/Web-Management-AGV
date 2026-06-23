@@ -3,11 +3,11 @@ package com.example.ssafy_pjt.backend.feature.agv.service;
 import com.example.ssafy_pjt.backend.feature.agv.dto.AgvResponse;
 import com.example.ssafy_pjt.backend.feature.agv.entity.Agv;
 import com.example.ssafy_pjt.backend.feature.agv.enums.AgvStatus;
-import com.example.ssafy_pjt.backend.feature.agv.enums.CargoType;
 import com.example.ssafy_pjt.backend.feature.agv.repository.AgvRepository;
-import com.example.ssafy_pjt.backend.feature.marker.repository.ArucoMarkerRepository;
-import com.example.ssafy_pjt.backend.feature.material.repository.MaterialRepository;
+import com.example.ssafy_pjt.backend.feature.mission.enums.MissionType;
 import com.example.ssafy_pjt.backend.websocket.dto.AgvStatusMessage;
+import com.example.ssafy_pjt.backend.websocket.sender.AgvCommandSender;
+import com.example.ssafy_pjt.backend.websocket.dto.CommandAssignMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,12 +20,11 @@ import java.util.List;
 public class AgvService {
 
     private final AgvRepository agvRepository;
-    private final ArucoMarkerRepository arucoMarkerRepository;
-    private final MaterialRepository materialRepository;
+    private final AgvCommandSender agvCommandSender;
 
     @Transactional(readOnly = true)
     public List<AgvResponse> getAgvs() {
-        return agvRepository.findAllWithDisplayInfo()
+        return agvRepository.findAll()
                 .stream()
                 .map(AgvResponse::new)
                 .toList();
@@ -35,7 +34,10 @@ public class AgvService {
     public void markConnected(Integer agvId) {
         Agv agv = findAgv(agvId);
 
-        agv.setStatus(AgvStatus.IDLE);
+        if (agv.getStatus() == AgvStatus.OFFLINE) {
+            agv.setStatus(AgvStatus.IDLE);
+        }
+
         agv.setLastSeenAt(LocalDateTime.now());
     }
 
@@ -53,55 +55,60 @@ public class AgvService {
 
         agv.setLastSeenAt(LocalDateTime.now());
     }
-
     @Transactional
     public void updateStatus(AgvStatusMessage message) {
         Agv agv = agvRepository.findById(message.getAgvId())
                 .orElseThrow();
 
-        agv.setStatus(AgvStatus.valueOf(message.getStatus()));
+        agv.setStatus(
+                AgvStatus.valueOf(message.getStatus())
+        );
+
         agv.setLastSeenAt(LocalDateTime.now());
-
-        if (message.getLocated() != null) {
-            arucoMarkerRepository.findById(message.getLocated())
-                    .ifPresent(agv::setCurrentMarker);
-        }
-
-        String cargo = message.getCargo();
-
-        if (cargo == null || cargo.isBlank()
-                || "EMPTY".equals(cargo)
-                || "NONE".equals(cargo)) {
-            agv.setCargoType(CargoType.NONE);
-            agv.setCargoMaterial(null);
-            return;
-        }
-
-        materialRepository.findByMaterialCode(cargo)
-                .ifPresent(material -> {
-                    agv.setCargoType(CargoType.MATERIAL);
-                    agv.setCargoMaterial(material);
-                });
     }
 
     @Transactional
     public void pauseAgv(Integer agvId) {
+
         Agv agv = findAgv(agvId);
 
-        agv.setStatus(AgvStatus.WAITING);
+        agv.setStatus(AgvStatus.STOP);
         agv.setLastSeenAt(LocalDateTime.now());
 
-        // TODO: WebSocket으로 AGV에게 STOP 또는 PAUSE 명령 전송
+        agvCommandSender.sendCommand(
+                agvId,
+                CommandAssignMessage.builder()
+                        .messageType("COMMAND_ASSIGN")
+                        .agvId(agvId)
+                        .taskId(null)
+                        .commandId(null)
+                        .command(MissionType.STOP)
+                        .destination(null)
+                        .cargo(null)
+                        .build()
+        );
     }
 
     @Transactional
     public void resumeAgv(Integer agvId) {
+
         Agv agv = findAgv(agvId);
 
-        agv.setStatus(AgvStatus.IDLE);
+        agv.setStatus(AgvStatus.MOVING);
         agv.setLastSeenAt(LocalDateTime.now());
 
-        // TODO: WebSocket으로 AGV에게 RESUME 명령 전송
+        agvCommandSender.sendCommand(
+                agvId,
+                CommandAssignMessage.builder()
+                        .messageType("COMMAND_ASSIGN")
+                        .agvId(agvId)
+                        .taskId(null)
+                        .commandId(null)
+                        .command(MissionType.RESUME)
+                        .destination(null)
+                        .cargo(null)
+                        .build()
+        );
     }
 
     @Transactional

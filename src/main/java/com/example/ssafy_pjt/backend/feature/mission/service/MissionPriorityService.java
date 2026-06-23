@@ -75,15 +75,33 @@ public class MissionPriorityService {
     }
 
     private int getInventoryScore(Mission mission) {
+
         if (mission.getMaterial() == null) {
             return 0;
         }
 
-        String materialCode = mission.getMaterial().getMaterialCode();
+        if (!isReplenishmentMission(mission)) {
+            return 0;
+        }
 
-        return inventoryRepository.findByMaterial_MaterialCode(materialCode)
+        String materialCode =
+                mission.getMaterial().getMaterialCode();
+
+        return inventoryRepository
+                .findByMaterial_MaterialCode(materialCode)
                 .map(this::toInventoryScore)
                 .orElse(0);
+    }
+
+    private boolean isReplenishmentMission(Mission mission) {
+        return switch (mission.getMissionType()) {
+            case PICK_FROM_INBOUND,
+                 DROP_TO_CROSS,
+                 PICK_FROM_CROSS,
+                 DROP_TO_STORAGE -> true;
+
+            default -> false;
+        };
     }
 
     private int toInventoryScore(Inventory inventory) {
@@ -135,19 +153,33 @@ public class MissionPriorityService {
             case PICK_FROM_STORAGE,
                  DROP_TO_CONVEYOR,
                  PICK_EMPTY_BOX,
-                 PICK_FROM_CROSS,
                  DROP_TO_STORAGE,
                  RETURN_TO_BASE -> AgvRole.SUPPLY;
 
             case PICK_FROM_CONVEYOR,
                  DROP_TO_FINISHED_BOX_STORAGE,
+                 PICK_FROM_FINISHED_BOX_STORAGE,
                  PICK_FROM_INBOUND,
                  DROP_TO_OUTBOUND,
                  DROP_EMPTY_BOX -> AgvRole.COLLECT;
 
-            case DROP_TO_CROSS -> mission.getMaterial() == null
-                    ? AgvRole.SUPPLY
-                    : AgvRole.COLLECT;
+            case DROP_TO_CROSS -> {
+                if (mission.getSourceZone() != null
+                        && "MATERIAL_BOX_STORAGE".equals(mission.getSourceZone().getZoneName())) {
+                    yield AgvRole.SUPPLY;
+                }
+
+                yield AgvRole.COLLECT;
+            }
+
+            case PICK_FROM_CROSS -> {
+                if (mission.getTargetZone() != null
+                        && "MATERIAL_BOX_STORAGE".equals(mission.getTargetZone().getZoneName())) {
+                    yield AgvRole.SUPPLY;
+                }
+
+                yield AgvRole.COLLECT;
+            }
 
             case WAIT,
                  STOP,
@@ -161,6 +193,9 @@ public class MissionPriorityService {
         return switch (type) {
             case PICK_FROM_CONVEYOR -> 100;
             case DROP_TO_FINISHED_BOX_STORAGE -> 90;
+
+            case PICK_FROM_FINISHED_BOX_STORAGE -> 85;
+
             case PICK_FROM_INBOUND, DROP_TO_OUTBOUND -> 80;
             case PICK_FROM_STORAGE, DROP_TO_CONVEYOR -> 60;
             case PICK_EMPTY_BOX, DROP_EMPTY_BOX -> 50;
