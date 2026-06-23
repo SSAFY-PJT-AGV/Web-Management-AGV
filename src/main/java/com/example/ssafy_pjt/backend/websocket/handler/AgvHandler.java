@@ -277,12 +277,11 @@ public class AgvHandler extends TextWebSocketHandler {
         agvSessionHandler.removeSession(session);
 
         if (agvId != null) {
-            agvService.markDisconnected(agvId);
             expectedCommandIds.remove(agvId);
 
-            System.out.println("AGV 연결 종료: agvId=" + agvId);
-        } else {
-            System.out.println("AGV 연결 종료: sessionId=" + session.getId());
+            System.out.println(
+                    "AGV 세션 종료: agvId=" + agvId
+            );
         }
     }
 }

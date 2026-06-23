@@ -59,6 +59,7 @@ public class MissionResultService {
 
         dashboardBroadcastService.missionRefresh();
         dashboardBroadcastService.mapRefresh();
+        dashboardBroadcastService.agvRefresh();
 
         missionDispatchService.dispatchAvailableAgvs();
     }

@@ -39,6 +39,10 @@ public class DashboardBroadcastService {
         broadcastRefreshAfterCommit(DashboardEventType.MAP_REFRESH);
     }
 
+    public void agvRefresh() {
+        broadcastRefreshAfterCommit(DashboardEventType.AGV_REFRESH);
+    }
+
     public void agvStatus(Map<String, Object> data) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("type", DashboardEventType.AGV_STATUS);

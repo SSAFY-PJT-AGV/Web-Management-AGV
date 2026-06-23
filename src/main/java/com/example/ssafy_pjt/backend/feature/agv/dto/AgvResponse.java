@@ -14,7 +14,10 @@ public class AgvResponse {
     private final Long currentMissionId;
     private final String cargoType;
     private final String cargoMaterialCode;
+    private final String targetZoneName;
     private final LocalDateTime lastSeenAt;
+    private final String currentMissionType;
+
 
     public AgvResponse(Agv agv) {
         this.agvId = agv.getAgvId();
@@ -37,6 +40,19 @@ public class AgvResponse {
                 ? null
                 : agv.getCargoMaterial().getMaterialCode();
 
+        this.targetZoneName =
+                agv.getCurrentMission() == null
+                        || agv.getCurrentMission().getTargetZone() == null
+                        ? null
+                        : agv.getCurrentMission().getTargetZone().getZoneName();
+
         this.lastSeenAt = agv.getLastSeenAt();
+
+        this.currentMissionType =
+                agv.getCurrentMission() == null
+                        ? null
+                        : agv.getCurrentMission()
+                          .getMissionType()
+                          .name();
     }
 }

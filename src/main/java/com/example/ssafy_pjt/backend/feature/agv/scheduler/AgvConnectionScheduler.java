@@ -15,11 +15,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AgvConnectionScheduler {
 
-    private static final long TIMEOUT_SECONDS = 10;
+    private static final long TIMEOUT_SECONDS = 100;
 
     private final AgvRepository agvRepository;
 
-    @Scheduled(fixedRate = 5000)
+    @Scheduled(fixedRate = 10000)
     @Transactional
     public void markTimeoutAgvsOffline() {
         LocalDateTime timeout =
