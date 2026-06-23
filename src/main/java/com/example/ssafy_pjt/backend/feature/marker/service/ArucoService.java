@@ -217,36 +217,45 @@ public class ArucoService {
             return buildNotDetectedResult(agvId, imageWidth, imageHeight);
         }
 
-        int selectedIndex =
-                findLargestMarkerIndex(corners);
+        List<ArucoResultMessage.MarkerInfo> detectedMarkers =
+                new ArrayList<>();
 
-        if (selectedIndex < 0) {
+        for (int i = 0; i < corners.size(); i++) {
+            ArucoResultMessage.MarkerInfo marker =
+                    buildMarkerInfo(
+                            agvId,
+                            ids,
+                            corners.get(i),
+                            i,
+                            imageWidth,
+                            imageHeight
+                    );
+
+            if (marker != null) {
+                detectedMarkers.add(marker);
+            }
+        }
+
+        if (detectedMarkers.isEmpty()) {
             return buildNotDetectedResult(agvId, imageWidth, imageHeight);
         }
 
-        ArucoResultMessage.MarkerInfo marker =
-                buildMarkerInfo(
-                        agvId,
-                        ids,
-                        corners.get(selectedIndex),
-                        selectedIndex,
-                        imageWidth,
-                        imageHeight
-                );
-
-        if (marker == null) {
-            return buildNotDetectedResult(agvId, imageWidth, imageHeight);
-        }
+        detectedMarkers.sort(
+                Comparator.comparing(
+                        ArucoResultMessage.MarkerInfo::getDistance,
+                        Comparator.nullsLast(Double::compareTo)
+                )
+        );
 
         return ArucoResultMessage.builder()
                 .messageType("VISION_RESULT")
                 .type("aruco")
                 .agvId(agvId)
                 .detected(true)
-                .markerCount(1)
+                .markerCount(detectedMarkers.size())
                 .imageWidth(imageWidth)
                 .imageHeight(imageHeight)
-                .markers(List.of(marker))
+                .markers(detectedMarkers)
                 .timestamp(nowSeconds())
                 .build();
     }
@@ -465,5 +474,13 @@ public class ArucoService {
             Integer agvId,
             String imageBase64
     ) {
+    }
+
+    // 마커 해석 코드 성능 측정용
+    public ArucoResultMessage benchmarkDetect(
+            Integer agvId,
+            String imageBase64
+    ) {
+        return detectFromBase64(agvId, imageBase64);
     }
 }

@@ -51,4 +51,7 @@ public class Agv {
 
     @Column(name = "last_seen_at")
     private LocalDateTime lastSeenAt;
+
+    @Column(nullable = false)
+    private boolean testMode = false;
 }
