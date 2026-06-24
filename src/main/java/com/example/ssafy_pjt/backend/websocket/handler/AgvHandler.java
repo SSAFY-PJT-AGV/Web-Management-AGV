@@ -202,11 +202,14 @@ public class AgvHandler extends TextWebSocketHandler {
 
         printImportantLog(message);
 
-        /*
-         * AGV STATUS는 10FPS로 들어오는 Telemetry 데이터입니다.
-         * 실시간 관제는 Dashboard WebSocket으로 유지하고,
-         * DB write는 AGV별 1초 1회 또는 중요 이벤트에만 수행합니다.
-         */
+        boolean doneMessage = isDoneMessage(message);
+
+        if (doneMessage) {
+            broadcastAgvStatus(message);
+            handleDoneEvent(session, message);
+            return;
+        }
+
         if (isImportantEvent(message) || shouldUpdateDb(message.getAgvId())) {
             agvService.updateStatus(message);
         }
@@ -218,17 +221,6 @@ public class AgvHandler extends TextWebSocketHandler {
                 && !message.getImage().isBlank()) {
 
             handleImageMessage(session, message);
-        }
-
-        /*
-         * Mission Flow에 영향을 주는 이벤트만 Scheduler / Mission Result 처리
-         */
-        if ("DONE".equals(message.getEvent())) {
-            handleDoneEvent(session, message);
-
-            missionDispatchService.assignCreatedMissionsToAgvQueues();
-            missionDispatchService.dispatchNextMission(message.getAgvId());
-            return;
         }
 
         if ("IDLE".equals(message.getStatus())) {
@@ -244,8 +236,13 @@ public class AgvHandler extends TextWebSocketHandler {
         }
     }
 
+    private boolean isDoneMessage(AgvStatusMessage message) {
+        return "DONE".equalsIgnoreCase(message.getStatus())
+                || "DONE".equalsIgnoreCase(message.getEvent());
+    }
+
     private boolean isImportantEvent(AgvStatusMessage message) {
-        return "DONE".equals(message.getEvent())
+        return isDoneMessage(message)
                 || "IDLE".equals(message.getStatus())
                 || "ERROR".equals(message.getStatus())
                 || "STOP".equals(message.getStatus());

@@ -245,7 +245,7 @@ public class TaskService {
         // AGV02: 빈 완제품 상자 가져오기
         createMission(
                 task,
-                MissionType.PICK_FROM_INBOUND,
+                MissionType.PICK_EMPTY_BOX,
                 firstProductMaterial,
                 product,
                 0,

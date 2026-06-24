@@ -41,82 +41,81 @@ INSERT IGNORE INTO aruco_marker (
     x_position,
     y_position,
     description,
-    is_active
+    is_active,
+    is_empty
 )
 VALUES
-    -- 물체 식별 마커 (좌표 없음)
-    (0, 'MATERIAL_TYPE', 1, NULL, NULL, NULL, NULL, '제어 칩 타입 마커', true),
-    (1, 'MATERIAL_TYPE', 2, NULL, NULL, NULL, NULL, '센서 타입 마커', true),
+    -- 물체 식별 마커
+    (0, 'MATERIAL_TYPE', 1, NULL, NULL, NULL, NULL, '제어 칩 타입 마커', true, NULL),
+    (1, 'MATERIAL_TYPE', 2, NULL, NULL, NULL, NULL, '센서 타입 마커', true, NULL),
 
-    (2, 'MATERIAL_BOX', 1, NULL, NULL, NULL, NULL, '제어 칩 부품 상자 마커', true),
-    (3, 'MATERIAL_BOX', 2, NULL, NULL, NULL, NULL, '센서 부품 상자 마커', true),
+    -- 자재 박스 마커
+    -- false = 꽉 찬 박스
+    -- true = 빈 박스
+    (2, 'MATERIAL_BOX', 1, NULL, NULL, NULL, NULL, '제어 칩 부품 상자 마커', true, false),
+    (3, 'MATERIAL_BOX', 2, NULL, NULL, NULL, NULL, '센서 부품 상자 마커', true, false),
 
-    (4, 'PRODUCT_TYPE', NULL, 1, NULL, NULL, NULL, '차량 제어 장치 완제품 상자 마커', true),
-    (5, 'PRODUCT_TYPE', NULL, 2, NULL, NULL, NULL, '카메라 센서 모듈 완제품 상자 마커', true),
-
-    (6, 'EMPTY_BOX', NULL, NULL, NULL, NULL, NULL, '빈 완제품 상자 마커', true),
-
+    -- 완제품 박스 마커
+    -- 시연 초기값: 빈 완제품 상자
+    (4, 'PRODUCT_TYPE', NULL, 1, NULL, NULL, NULL, '차량 제어 장치 완제품 상자 마커', true, true),
+    (5, 'PRODUCT_TYPE', NULL, 2, NULL, NULL, NULL, '카메라 센서 모듈 완제품 상자 마커', true, true),
 
     -- 상단 라인
-    (10, 'LINE', NULL, NULL, NULL, 180, 160, '라인트레이싱 마커 1', true),
+    (10, 'LINE', NULL, NULL, NULL, 180, 160, '라인트레이싱 마커 1', true, NULL),
 
     (11, 'ZONE', NULL, NULL, 7,
      805, 100,
-     '입출고 구역', true),
+     '입출고 구역', true, NULL),
 
     (12, 'LINE', NULL, NULL, NULL,
      500, 160,
-     '라인트레이싱 마커 2', true),
-
+     '라인트레이싱 마커 2', true, NULL),
 
     -- 오른쪽 라인
     (13, 'LINE', NULL, NULL, NULL,
      805, 300,
-     '라인트레이싱 마커 3', true),
+     '라인트레이싱 마커 3', true, NULL),
 
     (14, 'ZONE', NULL, NULL, 9,
      805, 480,
-     '교차구역', true),
+     '교차구역', true, NULL),
 
     (15, 'LINE', NULL, NULL, NULL,
      805, 680,
-     '라인트레이싱 마커 4', true),
-
+     '라인트레이싱 마커 4', true, NULL),
 
     -- 하단 라인 / AGV01
     (16, 'ZONE', NULL, NULL, 3,
      650, 775,
-     'AGV01 시작점', true),
+     'AGV01 시작점', true, NULL),
 
     (17, 'ZONE', NULL, NULL, 6,
      455, 640,
-     '자재 보관 구역', true),
+     '자재 보관 구역', true, NULL),
 
     (18, 'LINE', NULL, NULL, NULL,
      500, 775,
-     '라인트레이싱 마커 5', true),
-
+     '라인트레이싱 마커 5', true, NULL),
 
     -- 컨베이어
     (19, 'ZONE', NULL, NULL, 1,
      105, 350,
-     '컨베이어 입구', true),
+     '컨베이어 입구', true, NULL),
 
     (20, 'ZONE', NULL, NULL, 2,
      105, 500,
-     '컨베이어 출구', true),
-
+     '컨베이어 출구', true, NULL),
 
     -- 완제품 / AGV02
     (21, 'ZONE', NULL, NULL, 5,
      455, 160,
-     '완제품 보관 구역 및 AGV02 시작점', true),
-
+     '완제품 보관 구역 및 AGV02 시작점', true, NULL),
 
     -- 하단 보조 라인
     (22, 'LINE', NULL, NULL, NULL,
      300, 775,
-     '라인트레이싱 마커 6', true);
+     '라인트레이싱 마커 6', true, NULL);
+
 -- System
 INSERT IGNORE INTO system_state
 (id, mode, scenario_status, active_line)
@@ -171,7 +170,5 @@ INSERT IGNORE INTO inventory (
     updated_at
 )
 VALUES
-    (1, 1, 4, 1, 0, 1, 'NORMAL', NOW()),
-    (2, 2, 4, 3, 0, 1, 'NORMAL', NOW());
-
-
+    (1, 1, 6, 1, 0, 1, 'NORMAL', NOW()),
+    (2, 2, 6, 3, 0, 1, 'NORMAL', NOW());
