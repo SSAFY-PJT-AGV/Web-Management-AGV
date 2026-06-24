@@ -13,6 +13,7 @@ import com.example.ssafy_pjt.backend.feature.simulation.dto.SimulationAgvRespons
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 
@@ -23,6 +24,7 @@ public class SimulationApiService {
     private final AgvRepository agvRepository;
     private final ArucoMarkerRepository arucoMarkerRepository;
     private final MarkerResolveService markerResolveService;
+    private final RestTemplate restTemplate = new RestTemplate();
 
     @Transactional(readOnly = true)
     public SimulationAgvResponse getAgvSimulationState() {
@@ -83,6 +85,15 @@ public class SimulationApiService {
                         mission,
                         nextMarkerId
                 )
+        );
+    }
+
+    public void openGazebo() {
+
+        restTemplate.postForObject(
+                "http://127.0.0.1:5001/open-gazebo",
+                null,
+                Void.class
         );
     }
 
