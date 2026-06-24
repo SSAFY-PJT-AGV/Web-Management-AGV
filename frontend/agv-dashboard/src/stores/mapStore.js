@@ -24,7 +24,7 @@ export const useMapStore = defineStore('map', {
             this.error = null
 
             try {
-                const data = await markerApi.list()
+                const data = await markerApi.getMap()
 
                 this.markers = data.markers ?? []
                 this.agvs = data.agvs ?? []

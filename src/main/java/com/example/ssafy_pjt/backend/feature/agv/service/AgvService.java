@@ -4,10 +4,12 @@ import com.example.ssafy_pjt.backend.feature.agv.dto.AgvResponse;
 import com.example.ssafy_pjt.backend.feature.agv.entity.Agv;
 import com.example.ssafy_pjt.backend.feature.agv.enums.AgvStatus;
 import com.example.ssafy_pjt.backend.feature.agv.repository.AgvRepository;
+import com.example.ssafy_pjt.backend.feature.marker.repository.ArucoMarkerRepository;
 import com.example.ssafy_pjt.backend.feature.mission.enums.MissionType;
 import com.example.ssafy_pjt.backend.websocket.dto.AgvStatusMessage;
 import com.example.ssafy_pjt.backend.websocket.sender.AgvCommandSender;
 import com.example.ssafy_pjt.backend.websocket.dto.CommandAssignMessage;
+import com.example.ssafy_pjt.backend.feature.marker.entity.ArucoMarker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +23,7 @@ public class AgvService {
 
     private final AgvRepository agvRepository;
     private final AgvCommandSender agvCommandSender;
+    private final ArucoMarkerRepository arucoMarkerRepository;
 
     @Transactional(readOnly = true)
     public List<AgvResponse> getAgvs() {
@@ -57,12 +60,30 @@ public class AgvService {
     }
     @Transactional
     public void updateStatus(AgvStatusMessage message) {
+
         Agv agv = agvRepository.findById(message.getAgvId())
                 .orElseThrow();
 
         agv.setStatus(
                 AgvStatus.valueOf(message.getStatus())
         );
+
+
+        if (message.getLocated() != null) {
+
+            ArucoMarker marker =
+                    arucoMarkerRepository
+                            .findById(message.getLocated())
+                            .orElse(null);
+
+            if (
+                    marker.getXPosition() != null &&
+                            marker.getYPosition() != null
+            ) {
+                agv.setCurrentMarker(marker);
+            }
+        }
+
 
         agv.setLastSeenAt(LocalDateTime.now());
     }

@@ -17,6 +17,7 @@ public class AgvResponse {
     private final String targetZoneName;
     private final LocalDateTime lastSeenAt;
     private final String currentMissionType;
+    private final String currentLocationName;
 
 
     public AgvResponse(Agv agv) {
@@ -54,5 +55,10 @@ public class AgvResponse {
                         : agv.getCurrentMission()
                           .getMissionType()
                           .name();
+
+        this.currentLocationName = agv.getCurrentMarker() == null
+                ? null
+                : agv.getCurrentMarker().getDescription();
     }
+
 }
