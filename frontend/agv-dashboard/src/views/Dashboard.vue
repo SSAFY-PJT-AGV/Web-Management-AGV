@@ -16,7 +16,7 @@
         <PanelFrame title="AGV CURRENT STATE" class="shrink-0">
           <div class="grid grid-cols-1 gap-2">
             <AgvStatusCard
-              v-for="a in agv.items"
+              v-for="a in displayAgvs"
               :key="a.agvId"
               :agv="a"
               :missions="mission.items"
@@ -26,7 +26,7 @@
         </PanelFrame>
 
         <PanelFrame title="AGV CONTROL" class="shrink-0">
-          <AgvControl :agvs="agv.items" />
+          <AgvControl :agvs="displayAgvs" />
         </PanelFrame>
 
         <PanelFrame title="EVENT LOG" class="flex-1 min-h-0 overflow-hidden">
@@ -39,7 +39,7 @@
       <section class="flex flex-col gap-3 min-h-0">
         <PanelFrame title="FACTORY OPERATION SUMMARY" class="shrink-0">
           <DispatchStatus
-            :agvs="agv.items"
+            :agvs="displayAgvs"
             :missions="mission.items"
             :connected="connected"
             :tasks="task.items"
@@ -51,7 +51,7 @@
           <div class="h-full min-h-0 overflow-hidden">
             <FactoryMap
               :markers="map.markers"
-              :agvs="map.agvs"
+              :agvs="displayMapAgvs"
               :marker-by-id="map.markerById"
             />
           </div>
@@ -113,7 +113,7 @@
           <div class="absolute inset-x-4 top-[54px] bottom-3 overflow-y-auto pr-2">
             <AiRecommendation
               :items="rec.items"
-              :agvs="agv.items"
+              :agvs="displayAgvs"
               :missions="mission.items"
               :inventories="inventory.items"
               :now="now"
@@ -134,7 +134,7 @@
 
     <AiDetailPanel
       v-if="showAiDetail"
-      :agvs="agv.items"
+      :agvs="displayAgvs"
       :missions="mission.items"
       :inventories="inventory.items"
       :recommendations="rec.items"
@@ -195,6 +195,20 @@ const activeMissionStatuses = [
   'FAILED'
 ]
 
+const displayAgvs = computed(() =>
+  agv.items.filter(a =>
+    String(a.agvId) === '1' ||
+    String(a.agvId) === '2'
+  )
+)
+
+const displayMapAgvs = computed(() =>
+  map.agvs.filter(a =>
+    String(a.agvId) === '1' ||
+    String(a.agvId) === '2'
+  )
+)
+
 const agv01Missions = computed(() =>
   mission.items.filter(m =>
     String(m.agvId) === '1' &&
@@ -240,7 +254,7 @@ async function refreshDashboard() {
     task.load()
   ])
 
-  map.setAgvs(agv.items)
+  map.setAgvs(displayAgvs.value)
 }
 
 onMounted(async () => {
@@ -278,7 +292,11 @@ onMounted(async () => {
         case 'AGV_STATUS':
         case 'AGV_STATUS_UPDATED':
           agv.update(msg.data)
-          map.updateAgv(msg.data)
+
+          if (!msg.data?.testMode) {
+            map.updateAgv(msg.data)
+          }
+
           mission.load().catch(console.error)
           break
 
@@ -293,7 +311,7 @@ onMounted(async () => {
             map.load()
           ])
             .then(() => {
-              map.setAgvs(agv.items)
+              map.setAgvs(displayAgvs.value)
             })
             .catch(console.error)
           break

@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface AgvRepository extends JpaRepository<Agv, Integer> {
+
     List<Agv> findByRoleIn(List<AgvRole> roles);
 
     List<Agv> findByStatusIn(List<AgvStatus> statuses);
@@ -18,6 +19,12 @@ public interface AgvRepository extends JpaRepository<Agv, Integer> {
             LocalDateTime timeout,
             AgvStatus status
     );
+
+
+    List<Agv> findByTestModeTrue();
+
+    void deleteByTestModeTrue();
+
 
     @Query("""
         select distinct a
