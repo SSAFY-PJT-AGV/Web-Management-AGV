@@ -26,4 +26,18 @@ public interface ArucoMarkerRepository extends JpaRepository<ArucoMarker, Intege
             MarkerType markerType,
             Long productId
     );
+
+    Optional<ArucoMarker> findByMarkerTypeAndMaterial_MaterialIdAndEmpty(
+            MarkerType markerType,
+            Long materialId,
+            Boolean empty
+    );
+
+    Optional<ArucoMarker> findByMarkerTypeAndProduct_ProductIdAndEmpty(
+            MarkerType markerType,
+            Long productId,
+            Boolean empty
+    );
+
+
 }

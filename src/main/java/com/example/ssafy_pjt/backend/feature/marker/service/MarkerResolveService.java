@@ -74,37 +74,67 @@ public class MarkerResolveService {
 
         return switch (type) {
 
-            // 부품 자체 픽업
+            // 부품 자체
             case PICK_FROM_STORAGE,
-                 DROP_TO_CONVEYOR ->
+                 DROP_TO_CONVEYOR,
+                 PICK_FROM_CONVEYOR,
+                 DROP_TO_FINISHED_BOX_STORAGE ->
                     resolveMaterialMarker(mission);
 
-
-            // 완제품 이동
-            case PICK_FROM_CONVEYOR,
-                 DROP_TO_FINISHED_BOX_STORAGE,
-                 PICK_FROM_FINISHED_BOX_STORAGE,
-                 DROP_TO_OUTBOUND ->
-                    resolveProductMarker(mission);
-
-
-            // 빈 박스
-            case PICK_EMPTY_BOX,
-                 DROP_EMPTY_BOX ->
-                    resolveEmptyBoxMarker();
-
-
-            // 보급용 자재 상자
+            // 자재 상자
             case PICK_FROM_INBOUND,
                  PICK_FROM_CROSS,
                  DROP_TO_CROSS,
                  DROP_TO_STORAGE ->
-                    resolveMaterialBoxMarker(mission);
+                    resolveMaterialBoxMarker(mission, false);
 
+            // 완제품 상자
+            case PICK_FROM_FINISHED_BOX_STORAGE,
+                 DROP_TO_OUTBOUND ->
+                    resolveProductBoxMarker(
+                            mission,
+                            false
+                    );
+
+            // 빈 상자
+            case PICK_EMPTY_BOX,
+                 DROP_EMPTY_BOX -> {
+                if (mission.getProduct() != null) {
+                    yield resolveProductBoxMarker(mission, true);
+                }
+
+                yield resolveMaterialBoxMarker(mission, true);
+            }
 
             default ->
                     null;
         };
+    }
+
+    private Integer resolveProductBoxMarker(Mission mission, Boolean isEmpty) {
+
+        if (mission.getProduct() == null) {
+            throw new IllegalStateException(
+                    "완제품 박스 마커를 찾을 수 없습니다. missionId="
+                            + mission.getMissionId()
+                            + ", product=null"
+            );
+        }
+
+        return arucoMarkerRepository
+                .findByMarkerTypeAndProduct_ProductIdAndEmpty(
+                        MarkerType.PRODUCT_TYPE,
+                        mission.getProduct().getProductId(),
+                        isEmpty
+                )
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "완제품 박스 마커 없음 productId="
+                                        + mission.getProduct().getProductId()
+                                        + ", isEmpty="
+                                        + isEmpty
+                        ))
+                .getMarkerId();
     }
 
 
@@ -124,17 +154,28 @@ public class MarkerResolveService {
     }
 
 
-    private Integer resolveMaterialBoxMarker(Mission mission) {
+    private Integer resolveMaterialBoxMarker(Mission mission, Boolean isEmpty) {
+
+        if (mission.getMaterial() == null) {
+            throw new IllegalStateException(
+                    "자재 박스 마커를 찾을 수 없습니다. missionId="
+                            + mission.getMissionId()
+                            + ", material=null"
+            );
+        }
 
         return arucoMarkerRepository
-                .findByMarkerTypeAndMaterial_MaterialId(
+                .findByMarkerTypeAndMaterial_MaterialIdAndEmpty(
                         MarkerType.MATERIAL_BOX,
-                        mission.getMaterial().getMaterialId()
+                        mission.getMaterial().getMaterialId(),
+                        isEmpty
                 )
                 .orElseThrow(() ->
                         new IllegalStateException(
                                 "자재 박스 마커 없음 materialId="
                                         + mission.getMaterial().getMaterialId()
+                                        + ", isEmpty="
+                                        + isEmpty
                         ))
                 .getMarkerId();
     }
@@ -153,11 +194,6 @@ public class MarkerResolveService {
                                         + mission.getProduct().getProductId()
                         ))
                 .getMarkerId();
-    }
-
-
-    private Integer resolveEmptyBoxMarker() {
-        return 6;
     }
 
 
