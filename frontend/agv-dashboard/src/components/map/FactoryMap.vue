@@ -1,5 +1,15 @@
 <template>
-  <div class="factory-map h-full min-h-[390px] overflow-hidden border border-[var(--border)]">
+  <div
+    class="factory-map relative h-full min-h-[390px] overflow-hidden border border-[var(--border)]"
+  >
+    <button
+      type="button"
+      class="absolute right-3 top-3 z-10 rounded border border-[var(--border)] bg-[var(--panel2)] px-3 py-1 text-xs font-bold text-[var(--text)]"
+      @click.stop="openSimulation"
+    >
+      OPEN SIM
+    </button>
+
     <svg viewBox="0 0 900 850" class="h-full w-full">
       <text x="455" y="42" text-anchor="middle" fill="var(--accent)" font-size="17" font-weight="900" letter-spacing="3">
         FACTORY MAP
@@ -76,8 +86,6 @@
         <rect x="720" y="65" width="170" height="72" fill="rgba(45,212,191,0.24)" stroke="#2DD4BF" stroke-width="2" />
         <text x="805" y="108" text-anchor="middle" fill="#CCFBF1" font-size="16" font-weight="900">입출고 구역</text>
 
-
-
         <AgvMarker
           v-for="agv in agvs"
           :key="agv.agvId"
@@ -92,22 +100,23 @@
 
 <script setup>
 import { computed } from 'vue'
+import { simulationApi } from '../../api/simulationApi'
 
 import AgvMarker from './AgvMarker.vue'
 
 const props = defineProps({
   markers: {
     type: Array,
-    default: () => []
+    default: () => [],
   },
   agvs: {
     type: Array,
-    default: () => []
+    default: () => [],
   },
   markerById: {
     type: Function,
-    required: true
-  }
+    required: true,
+  },
 })
 
 const VIEWBOX_WIDTH = 900
@@ -161,5 +170,21 @@ function getAgvY(agv) {
   return Number.isFinite(y)
     ? y
     : fallbackY(agv)
+}
+
+function fallbackX(agv) {
+  return String(agv?.agvId).includes('2') ? 455 : 650
+}
+
+function fallbackY(agv) {
+  return String(agv?.agvId).includes('2') ? 160 : 775
+}
+
+const openSimulation = async () => {
+  try {
+    await simulationApi.openGazebo()
+  } catch (e) {
+    console.error(e)
+  }
 }
 </script>
