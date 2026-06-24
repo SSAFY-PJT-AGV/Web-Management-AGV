@@ -1,8 +1,8 @@
 <template>
   <g>
     <rect
-      :x="marker.x - 24"
-      :y="marker.y - 16"
+      :x="marker.xPosition - 24"
+      :y="marker.yPosition - 16"
       width="48"
       height="32"
       :fill="fill"
@@ -10,8 +10,8 @@
     />
 
     <text
-      :x="marker.x"
-      :y="marker.y + 4"
+      :x="marker.xPosition"
+      :y="marker.yPosition + 4"
       text-anchor="middle"
       fill="#05080D"
       font-size="10"
@@ -21,8 +21,8 @@
     </text>
 
     <text
-      :x="marker.x"
-      :y="marker.y + 36"
+      :x="marker.xPosition"
+      :y="marker.yPosition + 36"
       text-anchor="middle"
       fill="#F8FAFC"
       font-size="12"
@@ -45,14 +45,14 @@ const props = defineProps({
 
 const fill = computed(() => {
   const colorMap = {
-    STORAGE: '#2563EB',
-    FINISHED: '#FACC15',
-    CONVEYOR: '#22C55E',
-    CROSS: '#FACC15',
-    START: '#EF4444',
-    INOUT: '#2DD4BF'
+    ZONE: '#2563EB',
+    LINE: '#64748B',
+    MATERIAL_TYPE: '#22C55E',
+    MATERIAL_BOX: '#22C55E',
+    PRODUCT_TYPE: '#FACC15',
+    EMPTY_BOX: '#94A3B8'
   }
 
-  return colorMap[props.marker.type] || '#64748B'
+  return colorMap[props.marker.markerType] || '#64748B'
 })
 </script>

@@ -13,12 +13,15 @@ public class MarkerResolveService {
 
     private final ArucoMarkerRepository arucoMarkerRepository;
 
+
     public Integer resolveDestinationMarkerId(Mission mission) {
+
         MissionType type = mission.getMissionType();
 
         return switch (type) {
+
             case PICK_FROM_STORAGE ->
-                    resolveMaterialBoxMarker(mission);
+                    resolveZoneMarker("MATERIAL_BOX_STORAGE");
 
             case DROP_TO_CONVEYOR ->
                     resolveZoneMarker("CONVEYOR_START");
@@ -28,7 +31,7 @@ public class MarkerResolveService {
 
             case DROP_TO_FINISHED_BOX_STORAGE,
                  PICK_FROM_FINISHED_BOX_STORAGE ->
-                    resolveProductBoxMarker(mission);
+                    resolveZoneMarker("FINISHED_BOX_STORAGE");
 
             case PICK_FROM_INBOUND ->
                     resolveZoneMarker("INBOUND");
@@ -43,8 +46,13 @@ public class MarkerResolveService {
             case PICK_EMPTY_BOX ->
                     resolveZoneMarker("MATERIAL_BOX_STORAGE");
 
-            case DROP_EMPTY_BOX ->
-                    resolveZoneMarker("OUTBOUND");
+            case DROP_EMPTY_BOX -> {
+                if (mission.getProduct() != null) {
+                    yield resolveZoneMarker("FINISHED_BOX_STORAGE");
+                }
+
+                yield resolveZoneMarker("OUTBOUND");
+            }
 
             case DROP_TO_STORAGE ->
                     resolveZoneMarker("MATERIAL_BOX_STORAGE");
@@ -53,99 +61,136 @@ public class MarkerResolveService {
                     resolveReturnBaseMarker(mission);
 
             default ->
-                    throw new IllegalArgumentException("지원하지 않는 MissionType입니다: " + type);
+                    throw new IllegalArgumentException(
+                            "지원하지 않는 MissionType: " + type
+                    );
         };
     }
 
+
     public Integer resolveCargoMarkerId(Mission mission) {
+
         MissionType type = mission.getMissionType();
 
         return switch (type) {
 
+            // 부품 자체 픽업
+            case PICK_FROM_STORAGE,
+                 DROP_TO_CONVEYOR ->
+                    resolveMaterialMarker(mission);
+
+
+            // 완제품 이동
+            case PICK_FROM_CONVEYOR,
+                 DROP_TO_FINISHED_BOX_STORAGE,
+                 PICK_FROM_FINISHED_BOX_STORAGE,
+                 DROP_TO_OUTBOUND ->
+                    resolveProductMarker(mission);
+
+
+            // 빈 박스
             case PICK_EMPTY_BOX,
-                 DROP_EMPTY_BOX -> {
-                if (mission.getMaterial() != null) {
-                    yield resolveMaterialBoxMarker(mission);
-                }
+                 DROP_EMPTY_BOX ->
+                    resolveEmptyBoxMarker();
 
-                if (mission.getProduct() != null) {
-                    yield resolveProductBoxMarker(mission);
-                }
 
-                yield null;
-            }
+            // 보급용 자재 상자
+            case PICK_FROM_INBOUND,
+                 PICK_FROM_CROSS,
+                 DROP_TO_CROSS,
+                 DROP_TO_STORAGE ->
+                    resolveMaterialBoxMarker(mission);
 
-            case PICK_FROM_FINISHED_BOX_STORAGE,
-                 DROP_TO_OUTBOUND -> {
-                if (mission.getProduct() == null) {
-                    yield null;
-                }
 
-                yield resolveProductBoxMarker(mission);
-            }
-
-            default -> {
-                if (mission.getMaterial() != null) {
-                    yield resolveMaterialBoxMarker(mission);
-                }
-
-                if (mission.getProduct() != null) {
-                    yield resolveProductBoxMarker(mission);
-                }
-
-                yield null;
-            }
+            default ->
+                    null;
         };
     }
 
+
+    private Integer resolveMaterialMarker(Mission mission) {
+
+        return arucoMarkerRepository
+                .findByMarkerTypeAndMaterial_MaterialId(
+                        MarkerType.MATERIAL_TYPE,
+                        mission.getMaterial().getMaterialId()
+                )
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "자재 타입 마커 없음 materialId="
+                                        + mission.getMaterial().getMaterialId()
+                        ))
+                .getMarkerId();
+    }
+
+
     private Integer resolveMaterialBoxMarker(Mission mission) {
-        if (mission.getMaterial() == null) {
-            throw new IllegalStateException("자재 박스 미션인데 material이 없습니다. missionId=" + mission.getMissionId());
-        }
 
         return arucoMarkerRepository
                 .findByMarkerTypeAndMaterial_MaterialId(
                         MarkerType.MATERIAL_BOX,
                         mission.getMaterial().getMaterialId()
                 )
-                .orElseThrow(() -> new IllegalStateException("자재 박스 마커를 찾을 수 없습니다. materialId="
-                        + mission.getMaterial().getMaterialId()))
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "자재 박스 마커 없음 materialId="
+                                        + mission.getMaterial().getMaterialId()
+                        ))
                 .getMarkerId();
     }
 
-    private Integer resolveProductBoxMarker(Mission mission) {
-        if (mission.getProduct() == null) {
-            throw new IllegalStateException("완제품 박스 미션인데 product가 없습니다. missionId=" + mission.getMissionId());
-        }
+
+    private Integer resolveProductMarker(Mission mission) {
 
         return arucoMarkerRepository
                 .findByMarkerTypeAndProduct_ProductId(
                         MarkerType.PRODUCT_TYPE,
                         mission.getProduct().getProductId()
                 )
-                .orElseThrow(() -> new IllegalStateException("완제품 박스 마커를 찾을 수 없습니다. productId="
-                        + mission.getProduct().getProductId()))
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "완제품 마커 없음 productId="
+                                        + mission.getProduct().getProductId()
+                        ))
                 .getMarkerId();
     }
+
+
+    private Integer resolveEmptyBoxMarker() {
+        return 6;
+    }
+
 
     private Integer resolveZoneMarker(String zoneName) {
+
         return arucoMarkerRepository
-                .findByMarkerTypeAndZone_ZoneName(MarkerType.ZONE, zoneName)
-                .orElseThrow(() -> new IllegalStateException("Zone 마커를 찾을 수 없습니다. zoneName=" + zoneName))
+                .findByMarkerTypeAndZone_ZoneName(
+                        MarkerType.ZONE,
+                        zoneName
+                )
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Zone marker 없음: " + zoneName
+                        ))
                 .getMarkerId();
     }
 
+
     private Integer resolveReturnBaseMarker(Mission mission) {
-        Integer agvId = mission.getAgv().getAgvId();
+
+        Integer agvId =
+                mission.getAgv().getAgvId();
 
         if (agvId == 1) {
             return resolveZoneMarker("AGV01_START");
         }
 
         if (agvId == 2) {
-            return resolveZoneMarker("AGV02_START");
+            return resolveZoneMarker("FINISHED_BOX_STORAGE");
         }
 
-        throw new IllegalArgumentException("지원하지 않는 AGV ID입니다: " + agvId);
+        throw new IllegalArgumentException(
+                "지원하지 않는 AGV ID=" + agvId
+        );
     }
 }

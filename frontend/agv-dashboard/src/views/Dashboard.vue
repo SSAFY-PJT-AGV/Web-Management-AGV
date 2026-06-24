@@ -51,7 +51,7 @@
           <div class="h-full min-h-0 overflow-hidden">
             <FactoryMap
               :markers="map.markers"
-              :agvs="displayMapAgvs"
+              :agvs="displayAgvs"
               :marker-by-id="map.markerById"
             />
           </div>
@@ -202,13 +202,6 @@ const displayAgvs = computed(() =>
   )
 )
 
-const displayMapAgvs = computed(() =>
-  map.agvs.filter(a =>
-    String(a.agvId) === '1' ||
-    String(a.agvId) === '2'
-  )
-)
-
 const agv01Missions = computed(() =>
   mission.items.filter(m =>
     String(m.agvId) === '1' &&
@@ -253,8 +246,6 @@ async function refreshDashboard() {
     rec.load(),
     task.load()
   ])
-
-  map.setAgvs(displayAgvs.value)
 }
 
 onMounted(async () => {

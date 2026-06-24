@@ -1,19 +1,17 @@
 <template>
-  <g :transform="`translate(${x} ${y})`">
+  <g :transform="`translate(${safeX} ${safeY})`">
 
-    <!-- AGV Body -->
     <circle
-      r="17"
-      fill="#0B111A"
-      stroke-width="4"
-      :class="statusClass"
+      r="18"
+      fill="#F8FAFC"
+      stroke="#CBD5E1"
+      stroke-width="3"
     />
 
-    <!-- AGV Label -->
     <text
       y="5"
       text-anchor="middle"
-      fill="#F8FAFC"
+      fill="#0F172A"
       font-size="11"
       font-weight="900"
     >
@@ -23,54 +21,19 @@
   </g>
 </template>
 
-
 <script setup>
 import { computed } from 'vue'
 
-
 const props = defineProps({
-  agv: {
-    type: Object,
-    required: true
-  },
-
-  x: {
-    type: Number,
-    required: true
-  },
-
-  y: {
-    type: Number,
-    required: true
-  }
+  agv: Object,
+  x: Number,
+  y: Number
 })
 
+const safeX = computed(() => Number(props.x))
+const safeY = computed(() => Number(props.y))
 
-const displayAgvId = computed(() => {
-   `AGV${String(props.agv.agvId).padStart(2, '0')}`
-})
-
-
-const statusClass = computed(() => {
-
-  const statusMap = {
-    MOVING:
-      'stroke-[#22D3EE] pulse-cyan',
-
-    IDLE:
-      'stroke-slate-500',
-
-    WAITING:
-      'stroke-[#FACC15]',
-
-    ERROR:
-      'stroke-[#EF4444] critical-glow'
-  }
-
-
-  return (
-    statusMap[props.agv.status]
-    || 'stroke-slate-400'
-  )
-})
+const displayAgvId = computed(() =>
+  `A${props.agv.agvId}`
+)
 </script>

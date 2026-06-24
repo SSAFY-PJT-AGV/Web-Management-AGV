@@ -22,7 +22,6 @@ public interface ArucoMarkerRepository extends JpaRepository<ArucoMarker, Intege
             String zoneName
     );
 
-    // PRODUCT_TYPE + product_id → marker 11/12/13
     Optional<ArucoMarker> findByMarkerTypeAndProduct_ProductId(
             MarkerType markerType,
             Long productId
