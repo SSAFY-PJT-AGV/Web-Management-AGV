@@ -69,6 +69,10 @@ public class MissionDispatchService {
         );
 
         for (Agv agv : availableAgvs) {
+            if (isTestAgv(agv)) {
+                continue;
+            }
+
             dispatchNextMission(agv.getAgvId());
         }
     }
@@ -76,6 +80,11 @@ public class MissionDispatchService {
     @Transactional
     public Mission dispatchNextMission(Integer agvId) {
         Agv agv = getAgv(agvId);
+
+        if (isTestAgv(agv)) {
+            System.out.println("[DISPATCH SKIP] testMode AGV. agvId=" + agvId);
+            return null;
+        }
 
         if (!isDispatchable(agv)) {
             return null;
@@ -91,7 +100,6 @@ public class MissionDispatchService {
         if (mission == null) {
             return null;
         }
-
 
         if (shouldWait(mission)) {
             System.out.println(
@@ -211,6 +219,7 @@ public class MissionDispatchService {
         }
 
         return candidates.stream()
+                .filter(agv -> !isTestAgv(agv))
                 .filter(agv -> agvSessionHandler.isConnected(agv.getAgvId()))
                 .toList();
     }
@@ -360,6 +369,10 @@ public class MissionDispatchService {
     private Agv getAgv(Integer agvId) {
         return agvRepository.findById(agvId)
                 .orElseThrow(() -> new IllegalArgumentException("AGV " + agvId + "번이 존재하지 않습니다."));
+    }
+
+    private boolean isTestAgv(Agv agv) {
+        return agv.isTestMode();
     }
 
     private record MissionScore(

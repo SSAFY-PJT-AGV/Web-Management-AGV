@@ -6,7 +6,7 @@
       </div>
 
       <AdminMenu
-        :agvs="agv.items"
+        :agvs="operationalAgvs"
         @refresh="refreshDashboard"
       />
     </div>
@@ -16,7 +16,7 @@
         <PanelFrame title="AGV CURRENT STATE" class="shrink-0">
           <div class="grid grid-cols-1 gap-2">
             <AgvStatusCard
-              v-for="a in displayAgvs"
+              v-for="a in operationalAgvs"
               :key="a.agvId"
               :agv="a"
               :missions="mission.items"
@@ -26,10 +26,10 @@
         </PanelFrame>
 
         <PanelFrame title="AGV CONTROL" class="shrink-0">
-          <AgvControl :agvs="displayAgvs" />
+          <AgvControl :agvs="operationalAgvs" />
         </PanelFrame>
 
-        <PanelFrame title="EVENT LOG" class="flex-1 min-h-0 overflow-hidden">
+        <PanelFrame title="EVENT LOG" class="h-[340px] shrink-0 overflow-hidden">
           <div class="h-full min-h-0 overflow-y-auto pr-1">
             <EventLog :items="event.items" />
           </div>
@@ -39,7 +39,7 @@
       <section class="flex flex-col gap-3 min-h-0">
         <PanelFrame title="FACTORY OPERATION SUMMARY" class="shrink-0">
           <DispatchStatus
-            :agvs="displayAgvs"
+            :agvs="operationalAgvs"
             :missions="mission.items"
             :connected="connected"
             :tasks="task.items"
@@ -51,7 +51,7 @@
           <div class="h-full min-h-0 overflow-hidden">
             <FactoryMap
               :markers="map.markers"
-              :agvs="displayAgvs"
+              :agvs="operationalAgvs"
               :marker-by-id="map.markerById"
             />
           </div>
@@ -113,7 +113,7 @@
           <div class="absolute inset-x-4 top-[54px] bottom-3 overflow-y-auto pr-2">
             <AiRecommendation
               :items="rec.items"
-              :agvs="displayAgvs"
+              :agvs="operationalAgvs"
               :missions="mission.items"
               :inventories="inventory.items"
               :now="now"
@@ -134,7 +134,7 @@
 
     <AiDetailPanel
       v-if="showAiDetail"
-      :agvs="displayAgvs"
+      :agvs="operationalAgvs"
       :missions="mission.items"
       :inventories="inventory.items"
       :recommendations="rec.items"
@@ -215,6 +215,17 @@ const agv02MissionTypes = [
   'DROP_TO_CROSS'
 ]
 
+function isOperationalAgv(agvItem) {
+  return (
+    !agvItem?.testMode &&
+    ['1', '2'].includes(String(agvItem?.agvId))
+  )
+}
+
+function isOperationalAgvId(agvId) {
+  return ['1', '2'].includes(String(agvId))
+}
+
 function missionSortValue(m) {
   return (
     m.sequenceOrder ??
@@ -276,12 +287,28 @@ function buildAgvMissions(agvId) {
 const agv01Missions = computed(() => buildAgvMissions(1))
 const agv02Missions = computed(() => buildAgvMissions(2))
 
+const displayAgvs = computed(() =>
+  agv.items.map(a => ({
+    ...a,
+    currentMarkerId:
+      a.currentMarkerId ??
+      a.current_marker_id ??
+      a.currentMarker?.markerId ??
+      a.located ??
+      null
+  }))
+)
+
+const operationalAgvs = computed(() =>
+  displayAgvs.value.filter(isOperationalAgv)
+)
+
 const agv01Status = computed(() =>
-  agv.items.find(a => String(a.agvId) === '1')?.status ?? 'OFFLINE'
+  operationalAgvs.value.find(a => String(a.agvId) === '1')?.status ?? 'OFFLINE'
 )
 
 const agv02Status = computed(() =>
-  agv.items.find(a => String(a.agvId) === '2')?.status ?? 'OFFLINE'
+  operationalAgvs.value.find(a => String(a.agvId) === '2')?.status ?? 'OFFLINE'
 )
 
 const activeTaskStatuses = [
@@ -296,18 +323,6 @@ const activeTasks = computed(() =>
   )
 )
 
-const displayAgvs = computed(() =>
-  agv.items.map(a => ({
-    ...a,
-    currentMarkerId:
-      a.currentMarkerId ??
-      a.current_marker_id ??
-      a.currentMarker?.markerId ??
-      a.located ??
-      null
-  }))
-)
-
 async function refreshDashboard() {
   await Promise.allSettled([
     agv.load(),
@@ -319,7 +334,7 @@ async function refreshDashboard() {
     task.load()
   ])
 
-  map.setAgvs(displayAgvs.value)
+  map.setAgvs(operationalAgvs.value)
 }
 
 onMounted(async () => {
@@ -362,7 +377,7 @@ onMounted(async () => {
 
           agv.update(agvData)
 
-          if (!agvData?.testMode) {
+          if (isOperationalAgvId(agvData.agvId)) {
             map.updateAgv(agvData)
           }
 
@@ -392,7 +407,7 @@ onMounted(async () => {
         case 'MAP_REFRESH':
           map.load()
             .then(() => {
-              map.setAgvs(displayAgvs.value)
+              map.setAgvs(operationalAgvs.value)
             })
             .catch(console.error)
           break
