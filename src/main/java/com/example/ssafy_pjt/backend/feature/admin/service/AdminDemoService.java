@@ -124,14 +124,22 @@ public class AdminDemoService {
     }
 
     private void resetInventories(LocalDateTime now) {
+
         for (Inventory inventory : inventoryRepository.findAll()) {
+
+            Long inventoryId = inventory.getInventoryId();
+
+            if (inventoryId == 1) {
+                inventory.setCurrentQuantity(1);
+            } else if (inventoryId == 2) {
+                inventory.setCurrentQuantity(3);
+            } else {
+                inventory.setCurrentQuantity(4);
+            }
+
             inventory.setReservedQuantity(0);
             inventory.setStatus(InventoryStatus.NORMAL);
             inventory.setUpdatedAt(now);
-
-            inventory.setCurrentQuantity(4);
-            inventory.setReservedQuantity(0);
-            inventory.setStatus(InventoryStatus.NORMAL);
         }
     }
 

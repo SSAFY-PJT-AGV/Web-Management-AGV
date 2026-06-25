@@ -3,14 +3,14 @@
     class="
       terminal-log
       custom-scrollbar
-      h-40
+      h-full
+      min-h-0
       overflow-auto
       p-2
       space-y-1
     "
   >
 
-    <!-- Event Log Row -->
     <div
       v-for="event in items"
       :key="getEventKey(event)"
@@ -23,33 +23,26 @@
         tracking-[0.04em]
       "
     >
-
-      <!-- Time -->
       <span class="text-slate-500">
         {{ formatTime(event) }}
       </span>
 
-
-      <!-- Level -->
       <span :class="levelClass(event.level)">
         [{{ event.level }}]
       </span>
 
-
-      <!-- Message -->
       <span class="text-slate-300">
         {{ event.message }}
       </span>
-
     </div>
 
-
-    <!-- Empty State -->
     <div
       v-if="!items || items.length === 0"
       class="
-        py-6
-        text-center
+        flex
+        h-full
+        items-center
+        justify-center
         text-xs
         tracking-[0.12em]
         text-slate-600
@@ -61,7 +54,6 @@
   </div>
 </template>
 
-
 <script setup>
 defineProps({
   items: {
@@ -70,33 +62,19 @@ defineProps({
   }
 })
 
-
 function levelClass(level) {
-
   const classMap = {
-    INFO:
-      'text-[#38BDF8]',
-
-    WARN:
-      'text-[#FACC15]',
-
-    ERROR:
-      'text-[#EF4444]',
-
-    CRITICAL:
-      'text-[#DC2626] font-black'
+    INFO: 'text-[#38BDF8]',
+    WARN: 'text-[#FACC15]',
+    WARNING: 'text-[#FACC15]',
+    ERROR: 'text-[#EF4444]',
+    CRITICAL: 'text-[#DC2626] font-black'
   }
 
-
-  return (
-    classMap[level]
-    || 'text-slate-300'
-  )
+  return classMap[level] || 'text-slate-300'
 }
 
-
 function formatTime(event) {
-
   if (event.time) {
     return event.time
   }
@@ -113,9 +91,7 @@ function formatTime(event) {
     })
 }
 
-
 function getEventKey(event) {
-
   return [
     event.eventId,
     event.createdAt,

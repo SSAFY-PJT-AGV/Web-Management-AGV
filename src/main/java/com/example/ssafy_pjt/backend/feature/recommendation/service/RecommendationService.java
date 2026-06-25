@@ -16,6 +16,8 @@ import com.example.ssafy_pjt.backend.feature.recommendation.dto.RecommendationRe
 import com.example.ssafy_pjt.backend.feature.recommendation.entity.Recommendation;
 import com.example.ssafy_pjt.backend.feature.recommendation.repository.RecommendationRepository;
 import com.example.ssafy_pjt.backend.websocket.sender.DashboardBroadcastService;
+import com.example.ssafy_pjt.backend.feature.event.repository.EventLogRepository;
+import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,7 @@ public class RecommendationService {
     private final MaterialRepository materialRepository;
     private final GmsAiClient gmsAiClient;
     private final ReplenishmentService replenishmentService;
+    private final EventLogRepository eventLogRepository;
 
     @Transactional(readOnly = true)
     public List<RecommendationResponse> getRecommendations() {
@@ -52,22 +55,26 @@ public class RecommendationService {
 
     private String getTitle(Recommendation r) {
         if (r.getPriorityRank() != null && r.getPriorityRank() == 99) {
-            return "AI ANALYSIS";
+            return "LLM ANALYSIS";
         }
 
         if (r.getMaterial() != null) {
-            return "INVENTORY WARNING";
+            return "RULE INVENTORY WARNING";
         }
 
-        if (r.getReason().contains("Mission Queue")) {
-            return "QUEUE BOTTLENECK";
+        if (r.getReason().contains("대기 Mission")) {
+            return "RULE BOTTLENECK";
+        }
+
+        if (r.getReason().contains("이벤트 로그")) {
+            return "RULE EVENT WARNING";
         }
 
         if (r.getReason().contains("AGV")) {
-            return "AGV OPTIMIZATION";
+            return "RULE AGV OPTIMIZATION";
         }
 
-        return "SYSTEM ANALYSIS";
+        return "RULE SYSTEM ANALYSIS";
     }
 
     @Transactional
@@ -77,7 +84,8 @@ public class RecommendationService {
         int rank = 1;
 
         rank = analyzeInventory(rank);
-        rank = analyzeMissionQueue(rank);
+        rank = analyzeMissionWaitingTime(rank);
+        rank = analyzeEventLog(rank);
         rank = analyzeAgvLoad(rank);
         analyzeAgvStatus(rank);
 
@@ -155,21 +163,121 @@ public class RecommendationService {
         return rank;
     }
 
-    private int analyzeMissionQueue(int rank) {
-        long waitingCount = missionRepository.countByStatus(MissionStatus.CREATED);
+    private int analyzeMissionWaitingTime(int rank) {
+        List<Mission> missions = missionRepository.findAll();
 
-        if (waitingCount >= 5) {
+        LocalDateTime now = LocalDateTime.now();
+
+        long agv1MaxWait = 0;
+        long agv2MaxWait = 0;
+
+        for (Mission mission : missions) {
+            if (!List.of(
+                    MissionStatus.CREATED,
+                    MissionStatus.ASSIGNED
+            ).contains(mission.getStatus())) {
+                continue;
+            }
+
+            if (mission.getAgv() == null || mission.getCreatedAt() == null) {
+                continue;
+            }
+
+            long waitSec = Math.max(
+                    0,
+                    Duration.between(mission.getCreatedAt(), now).toSeconds()
+            );
+
+            Integer agvId = mission.getAgv().getAgvId();
+
+            if (agvId == 1) {
+                agv1MaxWait = Math.max(agv1MaxWait, waitSec);
+            } else if (agvId == 2) {
+                agv2MaxWait = Math.max(agv2MaxWait, waitSec);
+            }
+        }
+
+        long thresholdSec = 20;
+        long diffThresholdSec = 10;
+
+        if (agv1MaxWait >= thresholdSec
+                && agv1MaxWait - agv2MaxWait >= diffThresholdSec) {
+
+            Recommendation r = new Recommendation();
+            r.setMaterial(null);
+            r.setPriorityRank(rank++);
+            r.setPriorityScore(82.0);
+            r.setReason(
+                    "[RULE] AGV01 대기 Mission의 최대 대기 시간이 "
+                            + agv1MaxWait
+                            + "초입니다. AGV02보다 대기 시간이 길어 SUPPLY 구간 병목 가능성이 있습니다."
+            );
+            r.setTargetKey("AGV01_WAITING_BOTTLENECK");
+            r.setCreatedAt(LocalDateTime.now());
+
+            recommendationRepository.save(r);
+        }
+
+        if (agv2MaxWait >= thresholdSec
+                && agv2MaxWait - agv1MaxWait >= diffThresholdSec) {
+
+            Recommendation r = new Recommendation();
+            r.setMaterial(null);
+            r.setPriorityRank(rank++);
+            r.setPriorityScore(82.0);
+            r.setReason(
+                    "[RULE] AGV02 대기 Mission의 최대 대기 시간이 "
+                            + agv2MaxWait
+                            + "초입니다. AGV01보다 대기 시간이 길어 COLLECT 구간 병목 가능성이 있습니다."
+            );
+            r.setTargetKey("AGV02_WAITING_BOTTLENECK");
+            r.setCreatedAt(LocalDateTime.now());
+
+            recommendationRepository.save(r);
+        }
+
+        if (agv1MaxWait >= thresholdSec && agv2MaxWait >= thresholdSec) {
+            Recommendation r = new Recommendation();
+            r.setMaterial(null);
+            r.setPriorityRank(rank++);
+            r.setPriorityScore(78.0);
+            r.setReason(
+                    "[RULE] AGV01/AGV02 모두 대기 Mission이 "
+                            + thresholdSec
+                            + "초 이상 누적되어 전체 처리 지연 가능성이 있습니다."
+            );
+            r.setTargetKey("MISSION_WAITING_DELAY");
+            r.setCreatedAt(LocalDateTime.now());
+
+            recommendationRepository.save(r);
+        }
+
+        return rank;
+    }
+
+    private int analyzeEventLog(int rank) {
+        var events = eventLogRepository.findTop50ByOrderByCreatedAtDesc();
+
+        long warningOrErrorCount = events.stream()
+                .limit(20)
+                .filter(event ->
+                        "WARNING".equals(String.valueOf(event.getLevel()))
+                                || "ERROR".equals(String.valueOf(event.getLevel()))
+                )
+                .count();
+
+        if (warningOrErrorCount >= 3) {
             Recommendation r = new Recommendation();
 
             r.setMaterial(null);
             r.setPriorityRank(rank++);
-            r.setPriorityScore(80.0);
+            r.setPriorityScore(88.0);
             r.setReason(
-                    "Mission Queue 대기 미션이 "
-                            + waitingCount
-                            + "개입니다. AGV 작업 병목 가능성이 있습니다."
+                    "[RULE] 최근 이벤트 로그 20건 중 WARNING/ERROR가 "
+                            + warningOrErrorCount
+                            + "건 발생했습니다. 반복 오류 또는 비정상 상태 흐름 확인이 필요합니다."
             );
-            r.setTargetKey("MISSION_QUEUE");
+            r.setTargetKey("EVENT_LOG_WARNING");
             r.setCreatedAt(LocalDateTime.now());
 
             recommendationRepository.save(r);

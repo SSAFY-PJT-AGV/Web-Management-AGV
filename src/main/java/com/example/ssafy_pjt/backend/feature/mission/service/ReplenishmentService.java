@@ -10,6 +10,10 @@ import com.example.ssafy_pjt.backend.feature.mission.repository.MissionRepositor
 import com.example.ssafy_pjt.backend.feature.zone.entity.Zone;
 import com.example.ssafy_pjt.backend.feature.zone.repository.ZoneRepository;
 import com.example.ssafy_pjt.backend.websocket.sender.DashboardSender;
+import com.example.ssafy_pjt.backend.feature.event.entity.EventLog;
+import com.example.ssafy_pjt.backend.feature.event.enums.EventLevel;
+import com.example.ssafy_pjt.backend.feature.event.enums.EventType;
+import com.example.ssafy_pjt.backend.feature.event.service.EventLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +32,7 @@ public class ReplenishmentService {
     private final MaterialRepository materialRepository;
     private final ZoneRepository zoneRepository;
     private final DashboardSender dashboardSender;
+    private final EventLogService eventLogService;
 
     @Transactional
     public void createReplenishmentMissions(String materialCode, int quantity) {
@@ -130,6 +135,19 @@ public class ReplenishmentService {
                 crossZone,
                 outbound,
                 sequence
+        );
+
+        eventLogService.create(
+                EventLog.create(
+                        EventType.MISSION_CREATED,
+                        EventLevel.INFO,
+                        "자재 보급 Mission 생성 완료: material="
+                                + materialCode
+                                + ", quantity="
+                                + replenishQuantity,
+                        "MATERIAL",
+                        material.getMaterialId()
+                )
         );
     }
 

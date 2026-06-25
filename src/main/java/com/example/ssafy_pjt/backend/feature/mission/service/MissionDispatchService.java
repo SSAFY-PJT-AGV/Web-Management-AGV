@@ -15,6 +15,10 @@ import com.example.ssafy_pjt.backend.websocket.dto.CommandAssignMessage;
 import com.example.ssafy_pjt.backend.websocket.sender.AgvCommandSender;
 import com.example.ssafy_pjt.backend.websocket.sender.DashboardBroadcastService;
 import com.example.ssafy_pjt.backend.websocket.session.AgvSessionHandler;
+import com.example.ssafy_pjt.backend.feature.event.entity.EventLog;
+import com.example.ssafy_pjt.backend.feature.event.enums.EventLevel;
+import com.example.ssafy_pjt.backend.feature.event.enums.EventType;
+import com.example.ssafy_pjt.backend.feature.event.service.EventLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +38,7 @@ public class MissionDispatchService {
     private final MissionPriorityService missionPriorityService;
     private final AgvSessionHandler agvSessionHandler;
     private final DashboardBroadcastService dashboardBroadcastService;
+    private final EventLogService eventLogService;
 
     @Transactional
     public void assignCreatedMissionsToAgvQueues() {
@@ -55,20 +60,6 @@ public class MissionDispatchService {
         }
 
         dashboardBroadcastService.missionRefresh();
-    }
-
-    private Agv selectBestAgvForMissionOrNull(Mission mission) {
-        AgvRole requiredRole = getRequiredRole(mission);
-
-        List<Agv> candidates = findCandidateAgvs(requiredRole);
-
-        if (candidates.isEmpty()) {
-            return null;
-        }
-
-        return candidates.stream()
-                .min(Comparator.comparingLong(this::getQueueSize))
-                .orElse(null);
     }
 
     @Transactional
@@ -101,16 +92,37 @@ public class MissionDispatchService {
             return null;
         }
 
+
         if (shouldWait(mission)) {
-            mission.setStatus(MissionStatus.ASSIGNED);
+            System.out.println(
+                    "[DISPATCH WAIT] cross zone unavailable. agvId="
+                            + agvId
+                            + ", missionId="
+                            + mission.getMissionId()
+                            + ", type="
+                            + mission.getMissionType()
+            );
 
-            agv.setStatus(AgvStatus.WAITING);
-            agv.setCurrentMission(mission);
+            eventLogService.create(
+                    EventLog.create(
+                            EventType.STATUS_CHANGED,
+                            EventLevel.WARNING,
+                            "교차구역 사용 중으로 대기: AGV"
+                                    + agvId
+                                    + ", mission="
+                                    + mission.getMissionId()
+                                    + ", type="
+                                    + mission.getMissionType(),
+                            "MISSION",
+                            mission.getMissionId()
+                    )
+            );
 
+            dashboardBroadcastService.eventRefresh();
             dashboardBroadcastService.missionRefresh();
             dashboardBroadcastService.mapRefresh();
 
-            return mission;
+            return null;
         }
 
         if (isCrossMission(mission)) {
@@ -148,11 +160,24 @@ public class MissionDispatchService {
         return mission;
     }
 
+    private Agv selectBestAgvForMissionOrNull(Mission mission) {
+        AgvRole requiredRole = getRequiredRole(mission);
+
+        List<Agv> candidates = findCandidateAgvs(requiredRole);
+
+        if (candidates.isEmpty()) {
+            return null;
+        }
+
+        return candidates.stream()
+                .min(Comparator.comparingLong(this::getQueueSize))
+                .orElse(null);
+    }
+
     private boolean hasExecutingMission(Integer agvId) {
         return missionRepository.existsByAgv_AgvIdAndStatusIn(
                 agvId,
                 List.of(
-                        MissionStatus.ASSIGNED,
                         MissionStatus.IN_PROGRESS
                 )
         );
@@ -244,11 +269,11 @@ public class MissionDispatchService {
                     int score = missionPriorityService.calculateScore(mission, agv);
 
                     System.out.println(
-                            "[SCHEDULER SCORE] agvId=" + agvId +
-                                    ", missionId=" + mission.getMissionId() +
-                                    ", type=" + mission.getMissionType() +
-                                    ", sequence=" + mission.getSequenceOrder() +
-                                    ", score=" + score
+                            "[SCHEDULER SCORE] agvId=" + agvId
+                                    + ", missionId=" + mission.getMissionId()
+                                    + ", type=" + mission.getMissionType()
+                                    + ", sequence=" + mission.getSequenceOrder()
+                                    + ", score=" + score
                     );
 
                     return new MissionScore(mission, score);
@@ -290,8 +315,7 @@ public class MissionDispatchService {
         MissionType type = mission.getMissionType();
 
         return type == MissionType.DROP_TO_CROSS
-                || type == MissionType.PICK_FROM_CROSS
-                || type == MissionType.DROP_TO_STORAGE;
+                || type == MissionType.PICK_FROM_CROSS;
     }
 
     private boolean sendCommandAssign(Integer agvId, Mission mission) {
@@ -310,6 +334,22 @@ public class MissionDispatchService {
 
         try {
             agvCommandSender.sendCommand(agvId, message);
+
+            eventLogService.create(
+                    EventLog.create(
+                            EventType.MISSION_ASSIGNED,
+                            EventLevel.INFO,
+                            "COMMAND_ASSIGN 전송: AGV"
+                                    + agvId
+                                    + ", mission="
+                                    + mission.getMissionId()
+                                    + ", type="
+                                    + mission.getMissionType(),
+                            "MISSION",
+                            mission.getMissionId()
+                    )
+            );
+
             return true;
         } catch (Exception e) {
             System.out.println("[COMMAND_ASSIGN SEND FAIL] agvId=" + agvId + ", reason=" + e.getMessage());

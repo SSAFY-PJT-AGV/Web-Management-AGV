@@ -48,6 +48,6 @@ public class ArucoMarker {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
-    @Column(name = "is_empty")
-    private Boolean empty;
+    @Column(name = "empty_status")
+    private Boolean emptyStatus;
 }
