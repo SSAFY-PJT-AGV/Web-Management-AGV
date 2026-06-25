@@ -30,16 +30,34 @@ export const useMissionStore = defineStore('mission', {
         },
 
 
-        // REST / WebSocket 공통 갱신
         setItems(data) {
-            this.items = data.map((mission, index) => ({
-                ...mission,
 
-                // 화면 표시 순서
-                order:
-                    mission.sequence ??
-                    index + 1,
-            }))
+            const newIds = data.map(m => m.missionId)
+
+            // 삭제된 mission 제거
+            this.items = this.items.filter(
+                old => newIds.includes(old.missionId)
+            )
+
+            data.forEach((mission, index) => {
+
+                const existing = this.items.find(
+                    item => item.missionId === mission.missionId
+                )
+
+                const normalized = {
+                    ...mission,
+                    order:
+                        mission.sequence ??
+                        index + 1,
+                }
+
+                if (existing) {
+                    Object.assign(existing, normalized)
+                } else {
+                    this.items.push(normalized)
+                }
+            })
         }
 
     },

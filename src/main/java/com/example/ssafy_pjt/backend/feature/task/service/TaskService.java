@@ -74,6 +74,8 @@ public class TaskService {
         missionDispatchService.dispatchAvailableAgvs();
 
         dashboardBroadcastService.taskRefresh();
+        dashboardBroadcastService.missionRefresh();
+        dashboardBroadcastService.inventoryRefresh();
 
         return new TaskResponse(savedTask);
     }

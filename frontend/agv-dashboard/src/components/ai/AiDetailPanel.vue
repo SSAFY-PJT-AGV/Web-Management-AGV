@@ -57,9 +57,7 @@
           <div class="panel-title mb-3">CURRENT OPERATOR BRIEF</div>
 
           <div class="space-y-3 text-sm leading-6 text-slate-300">
-            <p>
-              {{ currentBrief }}
-            </p>
+            <p>{{ currentBrief }}</p>
 
             <div class="grid grid-cols-3 gap-3">
               <div class="brief-card">
@@ -214,9 +212,40 @@
             :key="r.title + r.targetKey + r.message"
             class="mb-3 border border-[var(--border2)] bg-black/20 p-3 last:mb-0"
           >
-            <div class="mb-1 flex justify-between text-xs">
-              <span class="font-bold text-[#FACC15]">{{ r.title }}</span>
-              <span class="text-[var(--muted)]">{{ r.targetKey || 'FACTORY' }}</span>
+            <div class="mb-2 flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2">
+                <span
+                  class="font-black tracking-[0.12em]"
+                  :class="r.title?.includes('LLM') ? 'text-[var(--accent)]' : 'text-[var(--green)]'"
+                >
+                  {{ r.title?.includes('LLM') ? 'LLM' : 'RULE' }}
+                </span>
+
+                <span class="text-[var(--muted)]">
+                  {{ r.title }}
+                </span>
+              </div>
+
+              <span class="text-[var(--muted)]">
+                {{ r.targetKey || 'FACTORY' }}
+              </span>
+            </div>
+
+            <div class="mb-2 flex items-center gap-2 text-[0.65rem]">
+              <span class="text-[var(--muted)]">PRIORITY SCORE</span>
+
+              <span
+                class="font-black"
+                :class="
+                  (r.priorityScore ?? 0) >= 90
+                    ? 'text-[var(--red)]'
+                    : (r.priorityScore ?? 0) >= 80
+                      ? 'text-[var(--amber)]'
+                      : 'text-[var(--green)]'
+                "
+              >
+                {{ Math.round(r.priorityScore ?? 0) }}
+              </span>
             </div>
 
             <p class="text-xs leading-5 text-slate-300">
@@ -240,7 +269,92 @@
             <div class="status-badge text-[var(--green)]">✓ ATOMIC FLOW NOT INTERRUPTED</div>
             <div class="status-badge text-[var(--green)]">✓ WAIT TIME BASED BOTTLENECK</div>
             <div class="status-badge text-[var(--green)]">✓ INVENTORY IMPACT CHECK</div>
+            <div class="status-badge text-[var(--green)]">✓ EVENT LOG ANALYSIS</div>
             <div class="status-badge text-[var(--red)]">× MISSION COUNT ONLY</div>
+          </div>
+        </article>
+      </div>
+
+      <div class="mt-3 grid grid-cols-[1fr_310px] gap-3">
+        <article class="panel-frame p-4">
+          <div class="panel-title mb-3">EVENT LOG ANALYSIS</div>
+
+          <div class="grid grid-cols-4 gap-2 text-center">
+            <div class="metric-box">
+              <div class="metric-label">TOTAL</div>
+              <div class="metric-value text-[var(--accent)]">{{ eventSummary.total }}</div>
+            </div>
+
+            <div class="metric-box">
+              <div class="metric-label">INFO</div>
+              <div class="metric-value text-[var(--green)]">{{ eventSummary.info }}</div>
+            </div>
+
+            <div class="metric-box">
+              <div class="metric-label">WARNING</div>
+              <div class="metric-value text-[var(--amber)]">{{ eventSummary.warning }}</div>
+            </div>
+
+            <div class="metric-box">
+              <div class="metric-label">ERROR</div>
+              <div class="metric-value text-[var(--red)]">{{ eventSummary.error }}</div>
+            </div>
+          </div>
+
+          <div class="mt-3 border border-[var(--border2)] bg-black/20 p-3">
+            <div class="mb-2 text-xs font-bold tracking-[0.14em] text-[var(--accent)]">
+              LOG JUDGEMENT
+            </div>
+
+            <p class="text-xs leading-5 text-slate-300">
+              {{ eventJudgement }}
+            </p>
+          </div>
+
+          <div class="mt-3 space-y-2">
+            <div
+              v-for="event in recentEvents"
+              :key="event.eventId ?? event.id ?? event.createdAt ?? event.message"
+              class="border border-[var(--border2)] bg-black/20 p-2"
+            >
+              <div class="mb-1 flex justify-between text-[0.65rem]">
+                <span :class="eventLevelClass(event.level)">
+                  {{ event.level ?? 'INFO' }}
+                </span>
+                <span class="text-[var(--muted)]">
+                  {{ formatEventTime(event.createdAt) }}
+                </span>
+              </div>
+
+              <div class="text-xs leading-5 text-slate-300">
+                {{ event.message }}
+              </div>
+            </div>
+          </div>
+
+          <div
+            v-if="recentEvents.length === 0"
+            class="mt-3 border border-[var(--border2)] bg-black/20 p-4 text-center text-xs tracking-[0.16em] text-[var(--muted)]"
+          >
+            NO EVENT LOG
+          </div>
+        </article>
+
+        <article class="panel-frame p-4">
+          <div class="panel-title mb-3">LOG-BASED AI VALUE</div>
+
+          <div class="space-y-2 text-xs leading-5 text-slate-300">
+            <div class="status-badge text-slate-300">
+              Event Log는 단순 상태값이 아니라, Mission 흐름과 재고 변화를 시간 순서로 설명합니다.
+            </div>
+
+            <div class="status-badge text-slate-300">
+              Rule Engine은 최근 로그의 WARNING / ERROR 빈도를 빠르게 감지합니다.
+            </div>
+
+            <div class="status-badge text-slate-300">
+              LLM 분석은 최근 이벤트 이력과 현재 공장 상태를 함께 요약합니다.
+            </div>
           </div>
         </article>
       </div>
@@ -261,7 +375,8 @@ const props = defineProps({
   recommendations: { type: Array, default: () => [] },
   inventories: { type: Array, default: () => [] },
   missions: { type: Array, default: () => [] },
-  agvs: { type: Array, default: () => [] }
+  agvs: { type: Array, default: () => [] },
+  events: { type: Array, default: () => [] }
 })
 
 const activeStatuses = ['CREATED', 'ASSIGNED', 'IN_PROGRESS', 'FAILED']
@@ -468,6 +583,67 @@ const operatorActions = computed(() => {
 
   return actions
 })
+
+const recentEvents = computed(() =>
+  Array.isArray(props.events)
+    ? props.events.slice(0, 5)
+    : []
+)
+
+const eventSummary = computed(() => {
+  const events = Array.isArray(props.events) ? props.events : []
+
+  return {
+    total: events.length,
+    info: events.filter(e => normalizeLevel(e.level) === 'INFO').length,
+    warning: events.filter(e => normalizeLevel(e.level) === 'WARNING').length,
+    error: events.filter(e => normalizeLevel(e.level) === 'ERROR').length
+  }
+})
+
+const eventJudgement = computed(() => {
+  if (eventSummary.value.total === 0) {
+    return '아직 분석할 Event Log가 없습니다. Mission 완료, 재고 변경, 보급 Mission 생성 이후 로그 기반 분석이 활성화됩니다.'
+  }
+
+  if (eventSummary.value.error > 0) {
+    return '최근 Event Log에서 ERROR가 감지되었습니다. Mission 실패, AGV 상태, WebSocket 연결 흐름을 우선 확인해야 합니다.'
+  }
+
+  if (eventSummary.value.warning > 0) {
+    return '최근 Event Log에서 WARNING이 감지되었습니다. 즉시 중단 상태는 아니지만 반복 여부를 관찰해야 합니다.'
+  }
+
+  return '최근 Event Log는 INFO 중심으로 기록되고 있습니다. Mission 처리, 재고 변경, AGV 상태 흐름이 정상 범위로 분석됩니다.'
+})
+
+function normalizeLevel(level) {
+  return String(level ?? 'INFO').toUpperCase()
+}
+
+function eventLevelClass(level) {
+  const normalized = normalizeLevel(level)
+
+  if (normalized === 'ERROR') return 'text-[var(--red)]'
+  if (normalized === 'WARNING') return 'text-[var(--amber)]'
+  return 'text-[var(--green)]'
+}
+
+function formatEventTime(value) {
+  if (!value) return '-'
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return '-'
+  }
+
+  return date.toLocaleTimeString('ko-KR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+}
 
 function agvComment(agv, activeCount, oldestWait) {
   if (agv.status === 'OFFLINE') return '연결이 끊긴 상태입니다. 진행 중 Mission이 있다면 상태 복구 확인이 우선입니다.'

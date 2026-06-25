@@ -265,29 +265,24 @@ public class AgvHandler extends TextWebSocketHandler {
 
     private void printImportantLog(AgvStatusMessage message) {
         boolean important =
-                isImportantEvent(message)
-                        || Boolean.TRUE.equals(message.getHasImage());
+                isDoneMessage(message)
+                        || "ASSIGNED".equals(message.getStatus())
+                        || "ERROR".equals(message.getStatus())
+                        || "STOP".equals(message.getStatus());
 
         if (!important) {
             return;
         }
 
-        System.out.println("\n========== [AGV IMPORTANT STATUS] ==========");
-        System.out.println("agvId       = " + message.getAgvId());
-        System.out.println("timestamp   = " + message.getTimestamp());
-        System.out.println("status      = " + message.getStatus());
-        System.out.println("event       = " + message.getEvent());
-        System.out.println("taskId      = " + message.getTaskId());
-        System.out.println("commandId   = " + message.getCommandId());
-        System.out.println("located     = " + message.getLocated());
-        System.out.println("destination = " + message.getDestination());
-        System.out.println("cargo       = " + message.getCargo());
-        System.out.println("hasImage    = " + message.getHasImage());
-        System.out.println("image       = "
-                + (message.getImage() == null
-                ? null
-                : "base64 length=" + message.getImage().length()));
-        System.out.println("============================================\n");
+        System.out.println(
+                "[AGV STATUS]"
+                        + " agvId=" + message.getAgvId()
+                        + ", status=" + message.getStatus()
+                        + ", event=" + message.getEvent()
+                        + ", commandId=" + message.getCommandId()
+                        + ", located=" + message.getLocated()
+                        + ", destination=" + message.getDestination()
+        );
     }
 
     private void broadcastAgvStatus(AgvStatusMessage message) {
@@ -314,10 +309,10 @@ public class AgvHandler extends TextWebSocketHandler {
             AgvStatusMessage message
     ) {
 
-        System.out.println("[VISION] image received. agvId="
-                + message.getAgvId()
-                + ", base64Length="
-                + message.getImage().length());
+//        System.out.println("[VISION] image received. agvId="
+//                + message.getAgvId()
+//                + ", base64Length="
+//                + message.getImage().length());
 
         arucoService.submitFrame(
                 message.getAgvId(),
@@ -328,26 +323,37 @@ public class AgvHandler extends TextWebSocketHandler {
                             return;
                         }
 
-                        System.out.println("[VISION RESULT] agvId="
-                                + arucoResult.getAgvId()
-                                + ", detected="
-                                + arucoResult.getDetected()
-                                + ", markerCount="
-                                + arucoResult.getMarkerCount());
+//                        System.out.println("[VISION RESULT] agvId="
+//                                + arucoResult.getAgvId()
+//                                + ", detected="
+//                                + arucoResult.getDetected()
+//                                + ", markerCount="
+//                                + arucoResult.getMarkerCount());
+//
+//                        if (arucoResult.getMarkers() != null) {
+//                            for (ArucoResultMessage.MarkerInfo marker : arucoResult.getMarkers()) {
+//                                System.out.println("  markerId="
+//                                        + marker.getMarkerId()
+//                                        + ", distance="
+//                                        + marker.getDistance()
+//                                        + ", yaw="
+//                                        + marker.getYaw()
+//                                        + ", pitch="
+//                                        + marker.getPitch()
+//                                        + ", centered="
+//                                        + marker.getCentered());
+//                            }
+//                        }
 
-                        if (arucoResult.getMarkers() != null) {
-                            for (ArucoResultMessage.MarkerInfo marker : arucoResult.getMarkers()) {
-                                System.out.println("  markerId="
-                                        + marker.getMarkerId()
-                                        + ", distance="
-                                        + marker.getDistance()
-                                        + ", yaw="
-                                        + marker.getYaw()
-                                        + ", pitch="
-                                        + marker.getPitch()
-                                        + ", centered="
-                                        + marker.getCentered());
-                            }
+                        // 마커 감지 성공했을 때만 로그 출력
+                        if (Boolean.TRUE.equals(arucoResult.getDetected())) {
+                            System.out.println(
+                                    "[VISION DETECTED]"
+                                            + " agvId="
+                                            + arucoResult.getAgvId()
+                                            + ", markerCount="
+                                            + arucoResult.getMarkerCount()
+                            );
                         }
 
                         synchronized (session) {

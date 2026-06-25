@@ -138,6 +138,7 @@
       :missions="mission.items"
       :inventories="inventory.items"
       :recommendations="rec.items"
+      :events="event.items"
       :now="now"
       @close="showAiDetail = false"
     />
@@ -184,37 +185,96 @@ const agv = useAgvStore()
 const mission = useMissionStore()
 const inventory = useInventoryStore()
 const rec = useRecommendationStore()
-const event = useEventStore()
 const map = useMapStore()
 const task = useTaskStore()
+const event = useEventStore()
 
 const activeMissionStatuses = [
+  'IN_PROGRESS',
   'ASSIGNED',
   'CREATED',
-  'IN_PROGRESS',
-  'FAILED'
+  'QUEUED',
+  'WAITING'
 ]
 
-const displayAgvs = computed(() =>
-  agv.items.filter(a =>
-    String(a.agvId) === '1' ||
-    String(a.agvId) === '2'
-  )
-)
+const agv01MissionTypes = [
+  'PICK_FROM_STORAGE',
+  'DROP_TO_STORAGE',
+  'DROP_TO_CONVEYOR',
+  'PICK_FROM_CROSS'
+]
 
-const agv01Missions = computed(() =>
-  mission.items.filter(m =>
-    String(m.agvId) === '1' &&
-    activeMissionStatuses.includes(m.status)
-  )
-)
+const agv02MissionTypes = [
+  'PICK_EMPTY_BOX',
+  'DROP_EMPTY_BOX',
+  'PICK_FROM_CONVEYOR',
+  'DROP_TO_FINISHED_BOX_STORAGE',
+  'PICK_FROM_FINISHED_BOX_STORAGE',
+  'DROP_TO_OUTBOUND',
+  'PICK_FROM_INBOUND',
+  'DROP_TO_CROSS'
+]
 
-const agv02Missions = computed(() =>
-  mission.items.filter(m =>
-    String(m.agvId) === '2' &&
-    activeMissionStatuses.includes(m.status)
+function missionSortValue(m) {
+  return (
+    m.sequenceOrder ??
+    m.sequence_order ??
+    m.sequence ??
+    m.missionId ??
+    m.commandId ??
+    999999
   )
-)
+}
+
+function missionBelongsToAgv(missionItem, agvId) {
+  const missionAgvId =
+    missionItem.agvId ??
+    missionItem.agv?.agvId ??
+    missionItem.assignedAgvId ??
+    null
+
+  if (missionAgvId !== null && missionAgvId !== undefined) {
+    return String(missionAgvId) === String(agvId)
+  }
+
+  if (String(agvId) === '1') {
+    return agv01MissionTypes.includes(missionItem.missionType)
+  }
+
+  if (String(agvId) === '2') {
+    return agv02MissionTypes.includes(missionItem.missionType)
+  }
+
+  return false
+}
+
+function buildAgvMissions(agvId) {
+  return mission.items
+    .filter(m =>
+      missionBelongsToAgv(m, agvId) &&
+      activeMissionStatuses.includes(m.status)
+    )
+    .sort((a, b) => {
+      const statusOrder = {
+        IN_PROGRESS: 1,
+        ASSIGNED: 2,
+        WAITING: 3,
+        QUEUED: 4,
+        CREATED: 5
+      }
+
+      const diff =
+        (statusOrder[a.status] ?? 99) -
+        (statusOrder[b.status] ?? 99)
+
+      if (diff !== 0) return diff
+
+      return missionSortValue(a) - missionSortValue(b)
+    })
+}
+
+const agv01Missions = computed(() => buildAgvMissions(1))
+const agv02Missions = computed(() => buildAgvMissions(2))
 
 const agv01Status = computed(() =>
   agv.items.find(a => String(a.agvId) === '1')?.status ?? 'OFFLINE'
@@ -236,6 +296,18 @@ const activeTasks = computed(() =>
   )
 )
 
+const displayAgvs = computed(() =>
+  agv.items.map(a => ({
+    ...a,
+    currentMarkerId:
+      a.currentMarkerId ??
+      a.current_marker_id ??
+      a.currentMarker?.markerId ??
+      a.located ??
+      null
+  }))
+)
+
 async function refreshDashboard() {
   await Promise.allSettled([
     agv.load(),
@@ -246,6 +318,8 @@ async function refreshDashboard() {
     rec.load(),
     task.load()
   ])
+
+  map.setAgvs(displayAgvs.value)
 }
 
 onMounted(async () => {
@@ -281,30 +355,26 @@ onMounted(async () => {
 
       switch (msg.type) {
         case 'AGV_STATUS':
-        case 'AGV_STATUS_UPDATED':
-          agv.update(msg.data)
-
-          if (!msg.data?.testMode) {
-            map.updateAgv(msg.data)
+        case 'AGV_STATUS_UPDATED': {
+          const agvData = {
+            ...msg.data
           }
 
-          mission.load().catch(console.error)
+          agv.update(agvData)
+
+          if (!agvData?.testMode) {
+            map.updateAgv(agvData)
+          }
+
           break
+        }
 
         case 'TASK_REFRESH':
-          task.load().catch(console.error)
+          refreshDashboard().catch(console.error)
           break
 
         case 'MISSION_REFRESH':
-          Promise.allSettled([
-            mission.load(),
-            agv.load(),
-            map.load()
-          ])
-            .then(() => {
-              map.setAgvs(displayAgvs.value)
-            })
-            .catch(console.error)
+          mission.load().catch(console.error)
           break
 
         case 'INVENTORY_REFRESH':
@@ -320,13 +390,17 @@ onMounted(async () => {
           break
 
         case 'MAP_REFRESH':
-          map.load().catch(console.error)
+          map.load()
+            .then(() => {
+              map.setAgvs(displayAgvs.value)
+            })
+            .catch(console.error)
           break
 
         default:
           console.warn('[UNKNOWN DASHBOARD WS MESSAGE]', msg)
       }
-    },
+    }
   })
 })
 

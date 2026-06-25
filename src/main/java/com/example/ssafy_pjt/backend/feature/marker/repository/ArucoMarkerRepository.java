@@ -4,6 +4,7 @@ import com.example.ssafy_pjt.backend.feature.marker.entity.ArucoMarker;
 import com.example.ssafy_pjt.backend.feature.marker.enums.MarkerType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface ArucoMarkerRepository extends JpaRepository<ArucoMarker, Integer> {
@@ -27,17 +28,15 @@ public interface ArucoMarkerRepository extends JpaRepository<ArucoMarker, Intege
             Long productId
     );
 
-    Optional<ArucoMarker> findByMarkerTypeAndMaterial_MaterialIdAndEmpty(
+    Optional<ArucoMarker> findByMarkerTypeAndMaterial_MaterialIdAndEmptyStatus(
             MarkerType markerType,
             Long materialId,
-            Boolean empty
+            Boolean emptyStatus
     );
 
-    Optional<ArucoMarker> findByMarkerTypeAndProduct_ProductIdAndEmpty(
+    List<ArucoMarker> findByMarkerTypeAndProduct_ProductIdAndEmptyStatus(
             MarkerType markerType,
             Long productId,
-            Boolean empty
+            Boolean emptyStatus
     );
-
-
 }

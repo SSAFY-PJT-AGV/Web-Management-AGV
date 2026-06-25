@@ -4,6 +4,7 @@ import com.example.ssafy_pjt.backend.feature.recommendation.service.Recommendati
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -42,7 +43,7 @@ public class RecommendationScheduler {
      * 외부 AI API 장애가 발생해도
      * AGV 관제 시스템은 계속 동작해야 한다.
      */
-    @Scheduled(fixedDelay = 2000000000)
+    @Scheduled(fixedDelay = 20000)
     public void aiCheck() {
 
         try {
