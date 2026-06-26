@@ -131,3 +131,9 @@ INSERT IGNORE INTO inventory (
 VALUES
     (1, 1, 6, 1, 0, 1, 'NORMAL', NOW()),
     (2, 2, 6, 3, 0, 1, 'NORMAL', NOW());
+
+UPDATE inventory
+SET
+    current_quantity = 0,
+    status = 'SHORTAGE'
+WHERE material_id = 1;

@@ -46,6 +46,10 @@ public class MissionDispatchService {
                 missionRepository.findByStatusOrderByCreatedAtAsc(MissionStatus.CREATED);
 
         for (Mission mission : createdMissions) {
+            if (isDemoScenarioMission(mission)) {
+                continue;
+            }
+
             if (mission.getAgv() != null) {
                 continue;
             }
@@ -69,6 +73,9 @@ public class MissionDispatchService {
         );
 
         for (Agv agv : availableAgvs) {
+            if (isTestAgv(agv)) {
+                continue;
+            }
             dispatchNextMission(agv.getAgvId());
         }
     }
@@ -76,6 +83,11 @@ public class MissionDispatchService {
     @Transactional
     public Mission dispatchNextMission(Integer agvId) {
         Agv agv = getAgv(agvId);
+
+        if (isTestAgv(agv)) {
+            System.out.println("[DISPATCH SKIP] testMode AGV. agvId=" + agvId);
+            return null;
+        }
 
         if (!isDispatchable(agv)) {
             return null;
@@ -158,6 +170,16 @@ public class MissionDispatchService {
         dashboardBroadcastService.mapRefresh();
 
         return mission;
+    }
+
+    private boolean isTestAgv(Agv agv) {
+        return agv.isTestMode();
+    }
+
+    private boolean isDemoScenarioMission(Mission mission) {
+        return mission.getTask() == null
+                && mission.getAgv() != null
+                && mission.getAgv().isTestMode();
     }
 
     private Agv selectBestAgvForMissionOrNull(Mission mission) {
@@ -264,6 +286,7 @@ public class MissionDispatchService {
                 );
 
         return missions.stream()
+                .filter(mission -> !isDemoScenarioMission(mission))
                 .filter(mission -> isHeadOfQueue(mission, missions))
                 .map(mission -> {
                     int score = missionPriorityService.calculateScore(mission, agv);

@@ -310,7 +310,6 @@ const displayAgvs = computed(() =>
 
 async function refreshDashboard() {
   await Promise.allSettled([
-    agv.load(),
     mission.load(),
     inventory.load(),
     map.load(),
@@ -327,6 +326,7 @@ onMounted(async () => {
     now.value = Date.now()
   }, 1000)
 
+ await agv.load()
   await refreshDashboard()
 
   if (localStorage.getItem('fakeAgv1') === 'true') {

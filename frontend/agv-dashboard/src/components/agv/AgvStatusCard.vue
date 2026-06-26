@@ -184,16 +184,28 @@ const destinationLabel = computed(() => {
 
 const payloadLabel = computed(() => {
   const cargo =
-    props.agv.cargoMaterialCode ??
-    props.agv.cargoType ??
-    props.agv.cargo ??
-    currentMission.value?.materialCode ??
-    currentMission.value?.cargo
+    pickPayloadValue(
+      props.agv.cargo,
+      props.agv.cargoMaterialCode,
+      props.agv.cargoType,
+      currentMission.value?.materialCode,
+      currentMission.value?.cargo
+    )
 
-  if (!cargo || cargo === 'NONE') return 'EMPTY'
+  if (!cargo) return 'EMPTY'
 
   return cargoMap[cargo] ?? cargo
 })
+
+function pickPayloadValue(...values) {
+  return values.find(value =>
+    value !== null &&
+    value !== undefined &&
+    value !== '' &&
+    value !== 'NONE' &&
+    value !== 'EMPTY'
+  )
+}
 
 const remainingMissionCount = computed(() => agvMissions.value.length)
 

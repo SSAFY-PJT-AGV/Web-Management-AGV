@@ -37,3 +37,17 @@ export const adminApi = {
             }
         )
 }
+
+export const demoScenarioApi = {
+    start() {
+        return axios.post('/api/admin/demo/scenario/start')
+    },
+
+    stop() {
+        return axios.post('/api/admin/demo/scenario/stop')
+    },
+
+    reset() {
+        return axios.post('/api/admin/demo/scenario/reset')
+    },
+}

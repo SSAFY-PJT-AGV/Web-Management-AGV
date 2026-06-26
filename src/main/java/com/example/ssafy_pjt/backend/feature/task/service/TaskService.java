@@ -244,30 +244,6 @@ public class TaskService {
 
         ProductMaterial firstProductMaterial = productMaterials.get(0);
 
-        // AGV02: 빈 완제품 상자 가져오기
-        createMission(
-                task,
-                MissionType.PICK_EMPTY_BOX,
-                firstProductMaterial,
-                product,
-                0,
-                outbound,
-                null,
-                sequence++
-        );
-
-        // AGV02: 빈 완제품 상자를 완제품 보관 구역에 배치
-        createMission(
-                task,
-                MissionType.DROP_EMPTY_BOX,
-                firstProductMaterial,
-                product,
-                0,
-                outbound,
-                finishedBoxStorage,
-                sequence++
-        );
-
         for (ProductMaterial productMaterial : productMaterials) {
             int requiredQuantity =
                     productMaterial.getQuantityPerUnit() * task.getQuantity();
@@ -317,6 +293,7 @@ public class TaskService {
             );
         }
 
+        // AGV02: 완제품 보관 구역에서 완제품 상자 픽업
         createMission(
                 task,
                 MissionType.PICK_FROM_FINISHED_BOX_STORAGE,
@@ -328,6 +305,7 @@ public class TaskService {
                 sequence++
         );
 
+        // AGV02: 완제품 상자를 출고 구역으로 이동
         createMission(
                 task,
                 MissionType.DROP_TO_OUTBOUND,
@@ -336,6 +314,30 @@ public class TaskService {
                 task.getQuantity(),
                 finishedBoxStorage,
                 outbound,
+                sequence++
+        );
+
+        // AGV02: 출고 후 빈 상자 픽업
+        createMission(
+                task,
+                MissionType.PICK_EMPTY_BOX,
+                firstProductMaterial,
+                product,
+                0,
+                outbound,
+                null,
+                sequence++
+        );
+
+        // AGV02: 빈 상자를 완제품 보관 구역에 복귀
+        createMission(
+                task,
+                MissionType.DROP_EMPTY_BOX,
+                firstProductMaterial,
+                product,
+                0,
+                outbound,
+                finishedBoxStorage,
                 sequence++
         );
     }

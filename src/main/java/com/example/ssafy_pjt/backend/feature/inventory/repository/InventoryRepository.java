@@ -11,4 +11,6 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     Optional<Inventory> findByMaterialAndZone(Material material, Zone zone);
 
     Optional<Inventory> findByMaterial_MaterialCode(String materialCode);
+
+    Optional<Inventory> findByMaterial_MaterialId(Long materialId);
 }

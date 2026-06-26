@@ -345,6 +345,10 @@ public class ArucoService {
         double ty = tvec.get(1, 0)[0];
         double tz = tvec.get(2, 0)[0];
 
+        if (agvId != null && agvId == 1) {
+            ty = ty + 8.0;
+        }
+
         double distance =
                 Math.sqrt(tx * tx + ty * ty + tz * tz);
 
